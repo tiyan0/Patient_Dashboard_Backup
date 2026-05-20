@@ -77,7 +77,6 @@ export default function App() {
       <View style={styles.header}>
         <Text style={styles.title}>Pharmacy Portal</Text>
         <Text style={styles.subtitle}>
-          Manage prescriptions and medicine fulfillment
         </Text>
       </View>
 
