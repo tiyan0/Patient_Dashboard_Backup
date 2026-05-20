@@ -1,297 +1,252 @@
-import React, { useState } from "react";
-import {
-  View,
-  Text,
-  StyleSheet,
-  ScrollView,
-  TouchableOpacity,
-  Modal,
-} from "react-native";
+import React, { useMemo, useState } from 'react';
+import { Alert, StyleSheet, View } from 'react-native';
+import { StatusBar } from 'expo-status-bar';
+import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
+
+import { mockPatients } from './data/mockPatients';
+import { mockBillingItems } from './data/mockBillingItems';
+import LoginScreen from './screens/LoginScreen';
+import DashboardScreen from './screens/DashboardScreen';
+import AssignedPatientsScreen from './screens/AssignedPatientsScreen';
+import PatientConsultationScreen from './screens/PatientConsultationScreen';
+import ReferralsScreen from './screens/ReferralsScreen';
+import BillingScreen from './screens/BillingScreen';
+import ProfileScreen from './screens/ProfileScreen';
+import BottomTabBar from './components/BottomTabBar';
+
+const doctor = {
+  name: 'Dr. Adrian Reyes',
+  initials: 'AR',
+  specialty: 'General Physician',
+  hospital: 'MediCare Queue Clinic',
+  contact: '+63 917 222 3344',
+  status: 'Available',
+};
+
+function makeSystemMessage(text) {
+  return {
+    id: `sys-${Date.now()}-${Math.round(Math.random() * 1000)}`,
+    type: 'system',
+    text,
+    time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+  };
+}
+
+function makeConsultationHistoryEntry(patient) {
+  const diagnosis = patient.soapNotes.assessment || 'General physician consultation';
+  const summary =
+    patient.soapNotes.plan ||
+    patient.soapNotes.subjective ||
+    patient.complaint ||
+    'Consultation completed by the general physician.';
+
+  return {
+    id: `hist-${Date.now()}-${Math.round(Math.random() * 1000)}`,
+    date: new Date().toISOString().slice(0, 10),
+    doctor: doctor.name,
+    department: doctor.specialty,
+    diagnosis,
+    summary,
+  };
+}
 
 export default function App() {
-  const [selectedCard, setSelectedCard] = useState(null);
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [activeTab, setActiveTab] = useState('dashboard');
+  const [patients, setPatients] = useState(mockPatients);
+  const [billingItems, setBillingItems] = useState(mockBillingItems);
+  const [selectedPatientId, setSelectedPatientId] = useState(mockPatients[0].id);
+  const [consultationSegment, setConsultationSegment] = useState('info');
 
-  const stats = [
-    {
-      title: "New Orders",
-      count: 12,
-      info: "+3 from yesterday",
-      color: "#3B82F6",
-    },
-    {
-      title: "Preparing",
-      count: 8,
-      info: "4 pending pickup",
-      color: "#F59E0B",
-    },
-    {
-      title: "Ready",
-      count: 15,
-      info: "Awaiting collection",
-      color: "#22C55E",
-    },
-    {
-      title: "Delivery",
-      count: 6,
-      info: "2 delivered today",
-      color: "#A855F7",
-    },
-    {
-      title: "Completed",
-      count: 127,
-      info: "+18% this week",
-      color: "#10B981",
-    },
-    {
-      title: "Low Stock",
-      count: 5,
-      info: "Requires reorder",
-      color: "#EF4444",
-    },
-  ];
+  const selectedPatient = useMemo(() => {
+    return patients.find((patient) => patient.id === selectedPatientId) || patients[0];
+  }, [patients, selectedPatientId]);
 
-  const recentOrders = [
-    {
-      id: "RX-1234",
-      patient: "Maria Santos",
-      medicine: "Amoxicillin 500mg",
-      status: "New",
-    },
-    {
-      id: "RX-1233",
-      patient: "Juan dela Cruz",
-      medicine: "Metformin 850mg",
-      status: "Preparing",
-    },
-    {
-      id: "RX-1232",
-      patient: "Anna Reyes",
-      medicine: "Losartan 50mg",
-      status: "Ready",
-    },
-  ];
+  const updatePatient = (patientId, updater) => {
+    setPatients((currentPatients) =>
+      currentPatients.map((patient) => {
+        if (patient.id !== patientId) {
+          return patient;
+        }
+
+        return typeof updater === 'function' ? updater(patient) : { ...patient, ...updater };
+      })
+    );
+  };
+
+  const updatePatientStatus = (patientId, status, extraPatch = {}) => {
+    if (status === 'In Consultation') {
+      setSelectedPatientId(patientId);
+    }
+
+    setPatients((currentPatients) =>
+      currentPatients.map((patient) => {
+        if (status === 'In Consultation' && patient.id !== patientId && patient.status === 'In Consultation') {
+          return {
+            ...patient,
+            status: 'Waiting',
+            messages: [
+              ...patient.messages,
+              makeSystemMessage('Consultation status moved back to Waiting.'),
+            ],
+          };
+        }
+
+        if (patient.id !== patientId) {
+          return patient;
+        }
+
+        const requestStatus =
+          extraPatch.consultationRequestStatus ||
+          (status === 'In Consultation' || status === 'Completed'
+            ? 'Approved'
+            : patient.consultationRequestStatus);
+
+        return {
+          ...patient,
+          ...extraPatch,
+          status,
+          consultationRequestStatus: requestStatus,
+          consultationHistory:
+            status === 'Completed' && patient.status !== 'Completed'
+              ? [...patient.consultationHistory, makeConsultationHistoryEntry(patient)]
+              : patient.consultationHistory,
+          messages: [
+            ...patient.messages,
+            makeSystemMessage(`Consultation status updated to ${status}.`),
+          ],
+        };
+      })
+    );
+  };
+
+  const selectPatient = (patientId, segment = 'info') => {
+    setSelectedPatientId(patientId);
+    setConsultationSegment(segment);
+    setActiveTab('consultation');
+  };
+
+  const openRecords = (patientId = selectedPatient.id) => {
+    setSelectedPatientId(patientId);
+    setConsultationSegment('records');
+    setActiveTab('records');
+  };
+
+  const openReferrals = (patientId = selectedPatient.id) => {
+    setSelectedPatientId(patientId);
+    setActiveTab('referrals');
+  };
+
+  const completeConsultation = (patientId = selectedPatient.id) => {
+    updatePatientStatus(patientId, 'Completed');
+    Alert.alert('Consultation completed', 'The patient has been marked completed.');
+  };
+
+  const generateInvoice = () => {
+    Alert.alert('Invoice generated', 'A draft invoice has been generated for this consultation.');
+  };
+
+  const markBillingPaid = (billingItemId) => {
+    setBillingItems((currentItems) =>
+      currentItems.map((item) =>
+        item.id === billingItemId
+          ? {
+              ...item,
+              status: 'Paid',
+              paidAt: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+            }
+          : item
+      )
+    );
+    Alert.alert('Marked paid', 'This billing item has been marked paid locally.');
+  };
+
+  const renderScreen = () => {
+    if (!isLoggedIn) {
+      return <LoginScreen onLogin={() => setIsLoggedIn(true)} />;
+    }
+
+    if (activeTab === 'assigned') {
+      return (
+        <AssignedPatientsScreen
+          patients={patients}
+          selectedPatientId={selectedPatient.id}
+          onSelectPatient={selectPatient}
+          onUpdateStatus={updatePatientStatus}
+        />
+      );
+    }
+
+    if (activeTab === 'consultation' || activeTab === 'records') {
+      return (
+        <PatientConsultationScreen
+          patient={selectedPatient}
+          initialSegment={activeTab === 'records' ? 'records' : consultationSegment}
+          onSegmentChange={setConsultationSegment}
+          onUpdatePatient={updatePatient}
+          onUpdatePatientStatus={updatePatientStatus}
+          onCompleteConsultation={completeConsultation}
+        />
+      );
+    }
+
+    if (activeTab === 'referrals') {
+      return (
+        <ReferralsScreen
+          doctor={doctor}
+          patient={selectedPatient}
+          onOpenConsultation={() => selectPatient(selectedPatient.id, 'info')}
+          onUpdatePatient={updatePatient}
+        />
+      );
+    }
+
+    if (activeTab === 'billing') {
+      return <BillingScreen billingItems={billingItems} onMarkPaid={markBillingPaid} />;
+    }
+
+    if (activeTab === 'profile') {
+      return <ProfileScreen doctor={doctor} onLogout={() => setIsLoggedIn(false)} />;
+    }
+
+    return (
+      <DashboardScreen
+        doctor={doctor}
+        patients={patients}
+        currentPatient={selectedPatient}
+        onOpenAssigned={() => setActiveTab('assigned')}
+        onOpenConsultation={() => selectPatient(selectedPatient.id, 'info')}
+        onOpenRecords={() => openRecords(selectedPatient.id)}
+        onOpenReferrals={() => openReferrals(selectedPatient.id)}
+        onGenerateInvoice={generateInvoice}
+      />
+    );
+  };
 
   return (
-    <ScrollView style={styles.container}>
-      {/* HEADER */}
-      <View style={styles.header}>
-        <Text style={styles.title}>Pharmacy Portal</Text>
-        <Text style={styles.subtitle}>
-          Manage prescriptions and medicine fulfillment
-        </Text>
-      </View>
-
-      {/* STATS GRID */}
-      <View style={styles.grid}>
-        {stats.map((item, index) => (
-          <TouchableOpacity
-            key={index}
-            style={[styles.card, { borderLeftColor: item.color }]}
-            onPress={() => setSelectedCard(item)}
-          >
-            <Text style={styles.cardTitle}>{item.title}</Text>
-            <Text style={styles.cardCount}>{item.count}</Text>
-          </TouchableOpacity>
-        ))}
-      </View>
-
-      {/* RECENT ORDERS */}
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Recent Orders</Text>
-
-        {recentOrders.map((order, index) => (
-          <View key={index} style={styles.orderCard}>
-            <Text style={styles.orderId}>{order.id}</Text>
-
-            <Text style={styles.patient}>{order.patient}</Text>
-
-            <Text style={styles.medicine}>{order.medicine}</Text>
-
-            <View style={styles.statusContainer}>
-              <Text style={styles.status}>{order.status}</Text>
-            </View>
-          </View>
-        ))}
-      </View>
-
-      {/* MODAL */}
-      <Modal
-        visible={selectedCard !== null}
-        transparent={true}
-        animationType="slide"
-      >
-        <View style={styles.modalBackground}>
-          <View style={styles.modalCard}>
-            <Text style={styles.modalTitle}>
-              {selectedCard?.title}
-            </Text>
-
-            <Text style={styles.modalCount}>
-              {selectedCard?.count}
-            </Text>
-
-            <Text style={styles.modalInfo}>
-              {selectedCard?.info}
-            </Text>
-
-            <TouchableOpacity
-              style={styles.closeButton}
-              onPress={() => setSelectedCard(null)}
-            >
-              <Text style={styles.closeText}>Close</Text>
-            </TouchableOpacity>
-          </View>
+    <SafeAreaProvider>
+      <SafeAreaView style={styles.safeArea}>
+        <StatusBar style="dark" />
+        <View style={styles.appShell}>
+          <View style={styles.screenArea}>{renderScreen()}</View>
+          {isLoggedIn ? <BottomTabBar activeTab={activeTab} onTabPress={setActiveTab} /> : null}
         </View>
-      </Modal>
-    </ScrollView>
+      </SafeAreaView>
+    </SafeAreaProvider>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
+  safeArea: {
     flex: 1,
-    backgroundColor: "#F3F4F6",
+    backgroundColor: '#f5f7fb',
   },
-
-  header: {
-    paddingTop: 60,
-    paddingHorizontal: 20,
-    paddingBottom: 20,
-  },
-
-  title: {
-    fontSize: 28,
-    fontWeight: "bold",
-    color: "#111827",
-  },
-
-  subtitle: {
-    marginTop: 5,
-    color: "#6B7280",
-  },
-
-  grid: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    justifyContent: "space-between",
-    paddingHorizontal: 15,
-  },
-
-  card: {
-    width: "48%",
-    backgroundColor: "white",
-    borderRadius: 16,
-    padding: 18,
-    marginBottom: 15,
-    borderLeftWidth: 5,
-  },
-
-  cardTitle: {
-    fontSize: 14,
-    color: "#6B7280",
-  },
-
-  cardCount: {
-    fontSize: 28,
-    fontWeight: "bold",
-    marginTop: 10,
-    color: "#111827",
-  },
-
-  section: {
-    marginTop: 10,
-    paddingHorizontal: 15,
-    paddingBottom: 40,
-  },
-
-  sectionTitle: {
-    fontSize: 22,
-    fontWeight: "bold",
-    marginBottom: 15,
-    color: "#111827",
-  },
-
-  orderCard: {
-    backgroundColor: "white",
-    borderRadius: 16,
-    padding: 18,
-    marginBottom: 12,
-  },
-
-  orderId: {
-    fontWeight: "bold",
-    fontSize: 16,
-    color: "#111827",
-  },
-
-  patient: {
-    marginTop: 8,
-    fontSize: 16,
-    color: "#111827",
-  },
-
-  medicine: {
-    marginTop: 4,
-    color: "#6B7280",
-  },
-
-  statusContainer: {
-    marginTop: 14,
-    alignSelf: "flex-start",
-    backgroundColor: "#E5E7EB",
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 20,
-  },
-
-  status: {
-    fontWeight: "600",
-    color: "#111827",
-  },
-
-  modalBackground: {
+  appShell: {
     flex: 1,
-    justifyContent: "flex-end",
-    backgroundColor: "rgba(0,0,0,0.3)",
+    backgroundColor: '#f5f7fb',
   },
-
-  modalCard: {
-    backgroundColor: "white",
-    borderTopLeftRadius: 25,
-    borderTopRightRadius: 25,
-    padding: 25,
-  },
-
-  modalTitle: {
-    fontSize: 24,
-    fontWeight: "bold",
-    color: "#111827",
-  },
-
-  modalCount: {
-    fontSize: 40,
-    fontWeight: "bold",
-    marginTop: 15,
-    color: "#111827",
-  },
-
-  modalInfo: {
-    marginTop: 10,
-    fontSize: 16,
-    color: "#6B7280",
-  },
-
-  closeButton: {
-    marginTop: 25,
-    backgroundColor: "#111827",
-    paddingVertical: 14,
-    borderRadius: 14,
-    alignItems: "center",
-  },
-
-  closeText: {
-    color: "white",
-    fontWeight: "bold",
-    fontSize: 16,
+  screenArea: {
+    flex: 1,
+    overflow: 'hidden',
   },
 });
