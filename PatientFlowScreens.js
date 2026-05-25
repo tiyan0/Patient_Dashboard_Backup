@@ -1,4 +1,8 @@
+<<<<<<< HEAD
 import React, { useState, useEffect } from 'react';
+=======
+import React, { useState } from 'react';
+>>>>>>> 867d58274d4ae65dd8e9435f42c2efd4b90eaaa5
 import {
   View,
   Text,
@@ -8,7 +12,10 @@ import {
   TextInput,
   Platform,
   StatusBar,
+<<<<<<< HEAD
   Modal,
+=======
+>>>>>>> 867d58274d4ae65dd8e9435f42c2efd4b90eaaa5
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
@@ -19,6 +26,7 @@ const bg = '#F1FAFE';
 const ink = '#071C3A';
 const muted = '#45627F';
 
+<<<<<<< HEAD
 function Header({ title, subtitle, icon, navigation, hideBackButton }) {
   return (
     <View style={styles.header}>
@@ -36,6 +44,26 @@ function Header({ title, subtitle, icon, navigation, hideBackButton }) {
           <Ionicons name="chevron-back" size={23} color={ink} />
         </TouchableOpacity>
       )}
+=======
+function navigateRoot(navigation, name, params) {
+  const rootNavigation = navigation?.getParent?.()?.getParent?.() || navigation?.getParent?.() || navigation;
+  rootNavigation?.navigate?.(name, params);
+}
+
+function Header({ title, subtitle, icon, navigation }) {
+  return (
+    <View style={styles.header}>
+      <TouchableOpacity
+        style={styles.backButton}
+        onPress={() => {
+          if (navigation?.canGoBack?.()) {
+            navigation.goBack();
+          }
+        }}
+      >
+        <Ionicons name="chevron-back" size={23} color={ink} />
+      </TouchableOpacity>
+>>>>>>> 867d58274d4ae65dd8e9435f42c2efd4b90eaaa5
       <View style={styles.headerIcon}>
         <Ionicons name={icon} size={22} color="#FFFFFF" />
       </View>
@@ -47,11 +75,19 @@ function Header({ title, subtitle, icon, navigation, hideBackButton }) {
   );
 }
 
+<<<<<<< HEAD
 function Screen({ children, title, subtitle, icon, navigation, hideBackButton }) {
   return (
     <SafeAreaView style={styles.safeArea}>
       <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
       <Header title={title} subtitle={subtitle} icon={icon} navigation={navigation} hideBackButton={hideBackButton} />
+=======
+function Screen({ children, title, subtitle, icon, navigation }) {
+  return (
+    <SafeAreaView style={styles.safeArea}>
+      <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
+      <Header title={title} subtitle={subtitle} icon={icon} navigation={navigation} />
+>>>>>>> 867d58274d4ae65dd8e9435f42c2efd4b90eaaa5
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.content}>
         {children}
       </ScrollView>
@@ -80,12 +116,20 @@ function Card({ children, style }) {
   return <View style={[styles.card, style]}>{children}</View>;
 }
 
+<<<<<<< HEAD
 export function AppointmentsScreen({ navigation, route }) {
   const [selected, setSelected] = useState('Upcoming');
 
   const [upcomingAppointments, setUpcomingAppointments] = useState([
     {
       id: '1',
+=======
+export function AppointmentsScreen({ navigation }) {
+  const [selected, setSelected] = useState('Upcoming');
+
+  const upcomingAppointments = [
+    {
+>>>>>>> 867d58274d4ae65dd8e9435f42c2efd4b90eaaa5
       doctor: 'Dr. Sarah Johnson',
       specialty: 'Family Medicine',
       status: 'Confirmed',
@@ -96,7 +140,10 @@ export function AppointmentsScreen({ navigation, route }) {
       actions: ['Join Call', 'Message']
     },
     {
+<<<<<<< HEAD
       id: '2',
+=======
+>>>>>>> 867d58274d4ae65dd8e9435f42c2efd4b90eaaa5
       doctor: 'Dr. Miguel Reyes',
       specialty: 'Orthopedic Surgeon',
       status: 'Pending',
@@ -104,6 +151,7 @@ export function AppointmentsScreen({ navigation, route }) {
       time: '10:00 AM',
       type: 'Clinic Visit',
       color: '#F59E0B',
+<<<<<<< HEAD
       actions: ['Message']
     }
   ]);
@@ -118,6 +166,11 @@ export function AppointmentsScreen({ navigation, route }) {
       navigation.setParams({ newAppointment: undefined });
     }
   }, [route?.params?.newAppointment]);
+=======
+      actions: ['Reschedule', 'Details']
+    }
+  ];
+>>>>>>> 867d58274d4ae65dd8e9435f42c2efd4b90eaaa5
 
   const pastAppointments = [
     {
@@ -128,7 +181,11 @@ export function AppointmentsScreen({ navigation, route }) {
       time: '1:00 PM',
       type: 'Video Consultation',
       color: '#10B981',
+<<<<<<< HEAD
       actions: []
+=======
+      actions: ['View Summary', 'Book Again']
+>>>>>>> 867d58274d4ae65dd8e9435f42c2efd4b90eaaa5
     }
   ];
 
@@ -150,7 +207,11 @@ export function AppointmentsScreen({ navigation, route }) {
         </View>
         <TouchableOpacity 
           style={{ backgroundColor: cyan, paddingHorizontal: 12, height: 34, borderRadius: 8, flexDirection: 'row', alignItems: 'center' }}
+<<<<<<< HEAD
           onPress={() => navigation.navigate('VideoConsult')}
+=======
+          onPress={() => navigateRoot(navigation, 'VideoConsult')}
+>>>>>>> 867d58274d4ae65dd8e9435f42c2efd4b90eaaa5
         >
           <Ionicons name="add" size={16} color="#FFFFFF" style={{ marginRight: 2 }} />
           <Text style={{ color: '#FFFFFF', fontSize: 12, fontWeight: '800' }}>Book Appt</Text>
@@ -186,9 +247,15 @@ export function AppointmentsScreen({ navigation, route }) {
                   key={act} 
                   style={[styles.outlineButton, isPrimary && { backgroundColor: cyan, borderColor: cyan }]}
                   onPress={() => {
+<<<<<<< HEAD
                     if (act === 'Join Call') navigation.navigate('JoinVideoCall');
                     else if (act === 'Message') navigation.navigate('Messages');
                     else if (act === 'Book Again') navigation.navigate('VideoConsult');
+=======
+                    if (act === 'Join Call') navigateRoot(navigation, 'JoinVideoCall');
+                    else if (act === 'Message') navigateRoot(navigation, 'Messages');
+                    else if (act === 'Book Again') navigateRoot(navigation, 'VideoConsult');
+>>>>>>> 867d58274d4ae65dd8e9435f42c2efd4b90eaaa5
                   }}
                 >
                   <Text style={[styles.outlineButtonText, isPrimary && { color: '#FFFFFF' }]}>{act}</Text>
@@ -203,6 +270,7 @@ export function AppointmentsScreen({ navigation, route }) {
 }
 
 export function PrescriptionsScreen({ navigation }) {
+<<<<<<< HEAD
 
   const prescriptions = [
     {
@@ -372,6 +440,45 @@ export function PrescriptionsScreen({ navigation }) {
         </View>
         <PrimaryButton label="Configure Reminders" icon="alarm-outline" />
       </Card>
+=======
+  const meds = [
+    ['Lisinopril', '10mg tablet', 'Take once daily', 'Refill in 5 days', '#F59E0B'],
+    ['Metformin', '500mg tablet', 'Take twice daily with meals', 'Refill in 30 days', '#10B981'],
+    ['Atorvastatin', '20mg tablet', 'Take every evening', 'Active', '#089FB4'],
+  ];
+
+  return (
+    <Screen title="Prescriptions" subtitle="Track medications and refills" icon="document-text-outline" navigation={navigation}>
+      <Card style={styles.heroCard}>
+        <View style={styles.rowBetween}>
+          <View>
+            <Text style={styles.heroEyebrow}>Medication Summary</Text>
+            <Text style={styles.largeTitle}>3 Active</Text>
+          </View>
+          <View style={styles.bigIcon}>
+            <Ionicons name="medical-outline" size={30} color="#FFFFFF" />
+          </View>
+        </View>
+        <Text style={styles.bodyText}>One medication needs refill attention soon.</Text>
+      </Card>
+
+      {meds.map(([name, dose, instruction, refill, color]) => (
+        <Card key={name}>
+          <View style={styles.rowBetween}>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.cardTitle}>{name}</Text>
+              <Text style={styles.bodyText}>{dose}</Text>
+            </View>
+            <Pill label={refill} color={color} />
+          </View>
+          <View style={styles.metaRow}>
+            <Ionicons name="alarm-outline" size={16} color={muted} />
+            <Text style={styles.metaText}>{instruction}</Text>
+          </View>
+          <PrimaryButton label="Request Refill" icon="refresh" color={color === '#F59E0B' ? '#F59E0B' : cyan} />
+        </Card>
+      ))}
+>>>>>>> 867d58274d4ae65dd8e9435f42c2efd4b90eaaa5
     </Screen>
   );
 }
@@ -407,10 +514,17 @@ export function AuthScreen({ navigation }) {
         <PrimaryButton
           label="Sign In"
           icon="log-in-outline"
+<<<<<<< HEAD
           onPress={() => navigation.navigate('MainTabs')}
         />
 
         <TouchableOpacity style={styles.authToggle} onPress={() => navigation.navigate('CreateProfile')}>
+=======
+          onPress={() => navigateRoot(navigation, 'MainTabs')}
+        />
+
+        <TouchableOpacity style={styles.authToggle} onPress={() => navigateRoot(navigation, 'CreateProfile')}>
+>>>>>>> 867d58274d4ae65dd8e9435f42c2efd4b90eaaa5
           <Text style={styles.authToggleText}>
             Don't have an account? <Text style={{ color: cyan, fontWeight: '800' }}>Sign Up</Text>
           </Text>
@@ -434,7 +548,11 @@ export function CreateProfileScreen({ navigation }) {
         <View style={styles.inputGroup}><Text style={styles.inputLabel}>Blood Type</Text><TextInput style={styles.textInput} placeholder="e.g. O+" placeholderTextColor="#94A3B8" /></View>
         <View style={styles.inputGroup}><Text style={styles.inputLabel}>Allergies</Text><TextInput style={styles.textInput} placeholder="List any allergies" placeholderTextColor="#94A3B8" /></View>
         <View style={styles.inputGroup}><Text style={styles.inputLabel}>Emergency Contact</Text><TextInput style={styles.textInput} placeholder="Name and phone number" placeholderTextColor="#94A3B8" /></View>
+<<<<<<< HEAD
         <PrimaryButton label="Complete Registration" icon="checkmark-circle-outline" onPress={() => navigation.navigate('MainTabs')} />
+=======
+        <PrimaryButton label="Complete Registration" icon="checkmark-circle-outline" onPress={() => navigateRoot(navigation, 'MainTabs')} />
+>>>>>>> 867d58274d4ae65dd8e9435f42c2efd4b90eaaa5
       </Card>
     </Screen>
   );
@@ -452,7 +570,11 @@ export function EditProfileScreen({ navigation }) {
         <View style={styles.inputGroup}><Text style={styles.inputLabel}>Blood Type</Text><TextInput style={styles.textInput} defaultValue="O+" placeholderTextColor="#94A3B8" /></View>
         <View style={styles.inputGroup}><Text style={styles.inputLabel}>Allergies</Text><TextInput style={styles.textInput} defaultValue="None" placeholderTextColor="#94A3B8" /></View>
         <View style={styles.inputGroup}><Text style={styles.inputLabel}>Emergency Contact</Text><TextInput style={styles.textInput} defaultValue="John Williams - (555) 987-6543" placeholderTextColor="#94A3B8" /></View>
+<<<<<<< HEAD
         <PrimaryButton label="Save Changes" icon="save-outline" onPress={() => navigation.canGoBack() ? navigation.goBack() : navigation.navigate('Profile')} />
+=======
+        <PrimaryButton label="Save Changes" icon="save-outline" onPress={() => navigation.goBack()} />
+>>>>>>> 867d58274d4ae65dd8e9435f42c2efd4b90eaaa5
       </Card>
     </Screen>
   );
@@ -483,7 +605,11 @@ export function ProfileScreen({ navigation }) {
           <Pill label="Verified" color="#10B981" />
         </View>
         <View style={{ width: '100%', marginTop: 10 }}>
+<<<<<<< HEAD
           <PrimaryButton label="Edit Profile" icon="create-outline" onPress={() => navigation.navigate('EditProfile')} />
+=======
+          <PrimaryButton label="Edit Profile" icon="create-outline" onPress={() => navigateRoot(navigation, 'EditProfile')} />
+>>>>>>> 867d58274d4ae65dd8e9435f42c2efd4b90eaaa5
         </View>
       </Card>
 
@@ -553,13 +679,18 @@ export function ProfileScreen({ navigation }) {
           label="Log Out" 
           icon="log-out-outline" 
           color="#EF4444" 
+<<<<<<< HEAD
           onPress={() => navigation.navigate('Auth')} 
+=======
+          onPress={() => navigateRoot(navigation, 'Auth')} 
+>>>>>>> 867d58274d4ae65dd8e9435f42c2efd4b90eaaa5
         />
       </View>
     </Screen>
   );
 }
 
+<<<<<<< HEAD
 export function ReferralDetailsScreen({ navigation }) {
   return (
     <Screen title="Referral Details" subtitle="Orthopedic surgeon referral" icon="git-branch-outline" navigation={navigation}>
@@ -1075,10 +1206,44 @@ export function BookSpecialistScreen({ navigation }) {
         )}
       </View>
     </SafeAreaView>
+=======
+export function MedicalRecordsScreen({ navigation }) {
+  const records = [
+    ['Lab Results', 'Complete blood count uploaded', 'March 15, 2026', 'New', '#8B5CF6'],
+    ['Visit Summary', 'Family medicine consultation', 'March 8, 2026', 'Reviewed', '#089FB4'],
+    ['Imaging', 'Right knee X-ray report', 'February 21, 2026', 'Available', '#10B981'],
+    ['Immunization', 'Flu vaccine record', 'January 12, 2026', 'Complete', '#089FB4'],
+  ];
+
+  return (
+    <Screen title="Medical Records" subtitle="View health history and files" icon="folder-open-outline" navigation={navigation}>
+      <View style={styles.searchBox}>
+        <Ionicons name="search-outline" size={18} color={muted} />
+        <TextInput style={styles.searchInput} placeholder="Search records" placeholderTextColor="#94A3B8" />
+      </View>
+      {records.map(([title, detail, date, status, color]) => (
+        <Card key={title}>
+          <View style={styles.rowBetween}>
+            <View style={styles.recordIcon}>
+              <Ionicons name="document-text-outline" size={22} color={color} />
+            </View>
+            <Pill label={status} color={color} />
+          </View>
+          <Text style={styles.cardTitle}>{title}</Text>
+          <Text style={styles.bodyText}>{detail}</Text>
+          <View style={styles.metaRow}>
+            <Ionicons name="calendar-outline" size={15} color={muted} />
+            <Text style={styles.metaText}>{date}</Text>
+          </View>
+        </Card>
+      ))}
+    </Screen>
+>>>>>>> 867d58274d4ae65dd8e9435f42c2efd4b90eaaa5
   );
 }
 
 export function MessagesScreen({ navigation }) {
+<<<<<<< HEAD
   const [activeChatId, setActiveChatId] = useState(null);
   const [inputText, setInputText] = useState('');
   
@@ -1233,10 +1398,32 @@ export function MessagesScreen({ navigation }) {
                 <Text style={[styles.chatText, isMine ? styles.chatMineText : styles.chatOtherText]}>{msg.text}</Text>
                 <Text style={[styles.chatTime, isMine ? styles.chatMineTime : styles.chatOtherTime]}>{msg.time}</Text>
               </View>
+=======
+  const [message, setMessage] = useState('');
+  const chat = [
+    ['Care Team', 'Hi Sarah, your referral request has been received.', '9:12 AM'],
+    ['You', 'Thank you. Can I book this week?', '9:14 AM'],
+    ['Care Team', 'Yes, we have orthopedic appointments available Friday.', '9:15 AM'],
+  ];
+
+  return (
+    <SafeAreaView style={styles.safeArea}>
+      <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
+      <Header title="Messages" subtitle="Chat with your care team" icon="chatbubble-ellipses-outline" navigation={navigation} />
+      <ScrollView contentContainerStyle={styles.content}>
+        {chat.map(([sender, text, time], idx) => {
+          const mine = sender === 'You';
+          return (
+            <View key={`${time}-${idx}`} style={[styles.chatBubble, mine && styles.chatBubbleMine]}>
+              <Text style={[styles.chatSender, mine && styles.chatMineText]}>{sender}</Text>
+              <Text style={[styles.chatText, mine && styles.chatMineText]}>{text}</Text>
+              <Text style={[styles.chatTime, mine && styles.chatMineText]}>{time}</Text>
+>>>>>>> 867d58274d4ae65dd8e9435f42c2efd4b90eaaa5
             </View>
           );
         })}
       </ScrollView>
+<<<<<<< HEAD
 
       {/* Message Composer */}
       <View style={styles.messageComposer}>
@@ -1253,6 +1440,18 @@ export function MessagesScreen({ navigation }) {
         />
         <TouchableOpacity style={[styles.sendButton, !inputText.trim() && { backgroundColor: '#CBD5E1' }]} onPress={sendMessage} disabled={!inputText.trim()}>
           <Ionicons name="send" size={16} color="#FFFFFF" style={{ marginLeft: 2 }} />
+=======
+      <View style={styles.messageComposer}>
+        <TextInput
+          value={message}
+          onChangeText={setMessage}
+          style={styles.messageInput}
+          placeholder="Type a message"
+          placeholderTextColor="#94A3B8"
+        />
+        <TouchableOpacity style={styles.sendButton} onPress={() => setMessage('')}>
+          <Ionicons name="send" size={18} color="#FFFFFF" />
+>>>>>>> 867d58274d4ae65dd8e9435f42c2efd4b90eaaa5
         </TouchableOpacity>
       </View>
     </SafeAreaView>
@@ -1300,7 +1499,11 @@ export function JoinVideoCallScreen({ navigation }) {
         <TouchableOpacity style={[styles.callControl, cameraOff && styles.callControlActive]} onPress={() => setCameraOff(!cameraOff)}>
           <Ionicons name={cameraOff ? 'videocam-off' : 'videocam'} size={24} color="#FFFFFF" />
         </TouchableOpacity>
+<<<<<<< HEAD
         <TouchableOpacity style={[styles.callControl, styles.endCall]} onPress={() => navigation.canGoBack() ? navigation.goBack() : navigation.navigate('Dashboard')}>
+=======
+        <TouchableOpacity style={[styles.callControl, styles.endCall]} onPress={() => navigation.goBack()}>
+>>>>>>> 867d58274d4ae65dd8e9435f42c2efd4b90eaaa5
           <Ionicons name="call" size={24} color="#FFFFFF" />
         </TouchableOpacity>
       </View>
@@ -1312,6 +1515,7 @@ export function JoinVideoCallScreen({ navigation }) {
   );
 }
 
+<<<<<<< HEAD
 export function MedicalRecordsScreen({ navigation }) {
   const [selectedCategory, setSelectedCategory] = useState('Consultation History');
   const [searchQuery, setSearchQuery] = useState('');
@@ -1890,6 +2094,27 @@ export function MedicalRecordsScreen({ navigation }) {
           return null;
         })
       )}
+=======
+export function ReferralDetailsScreen({ navigation }) {
+  return (
+    <Screen title="Referral Details" subtitle="Orthopedic surgeon referral" icon="git-branch-outline" navigation={navigation}>
+      <Card style={[styles.card, styles.warningBorder]}>
+        <View style={styles.rowBetween}>
+          <Text style={styles.largeTitle}>Specialist Referral</Text>
+          <Pill label="Pending" color="#F59E0B" />
+        </View>
+        <Text style={styles.bodyText}>Referred by Dr. Sofia Lim (Cardiologist)</Text>
+        <View style={styles.detailBlock}>
+          <Text style={styles.detailLabel}>Reason</Text>
+          <Text style={styles.detailText}>Knee pain after exercise</Text>
+        </View>
+        <View style={styles.detailBlock}>
+          <Text style={styles.detailLabel}>Referral Date</Text>
+          <Text style={styles.detailText}>February 10, 2026</Text>
+        </View>
+        <PrimaryButton label="Book Appointment" icon="person-add" color="#F59E0B" onPress={() => navigateRoot(navigation, 'Appointments')} />
+      </Card>
+>>>>>>> 867d58274d4ae65dd8e9435f42c2efd4b90eaaa5
     </Screen>
   );
 }
@@ -1903,6 +2128,7 @@ export function InvoiceScreen({ navigation }) {
   return (
     <Screen title="Invoice" subtitle="Pending payment" icon="card-outline" navigation={navigation}>
       <Card>
+<<<<<<< HEAD
         <View style={styles.rowBetween}>
           <Text style={styles.largeTitle}>Invoice</Text>
           <Text style={[styles.bodyText, { fontWeight: '700', color: ink }]}>INV-2026-0328-001</Text>
@@ -2296,6 +2522,26 @@ export function MedicalRecordsSharingScreen({ navigation }) {
       </SafeAreaView>
     </Modal>
     </>
+=======
+        <Text style={styles.heroEyebrow}>Consultation with</Text>
+        <Text style={styles.largeTitle}>Dr. Maria Santos</Text>
+        <Text style={styles.bodyText}>Consultation Date: March 28, 2026</Text>
+      </Card>
+      <Card>
+        {items.map(([label, amount]) => (
+          <View key={label} style={styles.invoiceRow}>
+            <Text style={styles.bodyText}>{label}</Text>
+            <Text style={styles.invoiceAmount}>{amount}</Text>
+          </View>
+        ))}
+        <View style={styles.invoiceTotal}>
+          <Text style={styles.cardTitle}>Total Due</Text>
+          <Text style={styles.totalAmount}>$800</Text>
+        </View>
+        <PrimaryButton label="Pay Now" icon="card" color="#F59E0B" />
+      </Card>
+    </Screen>
+>>>>>>> 867d58274d4ae65dd8e9435f42c2efd4b90eaaa5
   );
 }
 
@@ -2409,6 +2655,7 @@ const styles = StyleSheet.create({
   },
   searchInput: { flex: 1, color: ink, fontSize: 14, marginLeft: 8 },
   recordIcon: { width: 44, height: 44, borderRadius: 12, backgroundColor: '#F1FAFE', alignItems: 'center', justifyContent: 'center' },
+<<<<<<< HEAD
   
   // --- MESSAGING STYLES ---
   chatListItem: { flexDirection: 'row', alignItems: 'center', paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: '#F1F5F9' },
@@ -2450,10 +2697,32 @@ const styles = StyleSheet.create({
     alignItems: 'flex-end',
     paddingHorizontal: 10,
     paddingVertical: 12,
+=======
+  chatBubble: {
+    alignSelf: 'flex-start',
+    maxWidth: '86%',
+    backgroundColor: '#FFFFFF',
+    borderRadius: 13,
+    padding: 13,
+    marginBottom: 10,
+    borderWidth: 1,
+    borderColor: '#D8EAF0',
+  },
+  chatBubbleMine: { alignSelf: 'flex-end', backgroundColor: cyan, borderColor: cyan },
+  chatSender: { color: ink, fontSize: 12, fontWeight: '800', marginBottom: 5 },
+  chatText: { color: muted, fontSize: 14, lineHeight: 20 },
+  chatTime: { color: '#64748B', fontSize: 10, marginTop: 7, alignSelf: 'flex-end' },
+  chatMineText: { color: '#FFFFFF' },
+  messageComposer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 10,
+>>>>>>> 867d58274d4ae65dd8e9435f42c2efd4b90eaaa5
     borderTopWidth: 1,
     borderTopColor: '#E2E8F0',
     backgroundColor: '#FFFFFF',
   },
+<<<<<<< HEAD
   messageInput: { 
     flex: 1, 
     minHeight: 40, 
@@ -2469,6 +2738,10 @@ const styles = StyleSheet.create({
   },
   sendButton: { width: 40, height: 40, borderRadius: 20, backgroundColor: cyan, alignItems: 'center', justifyContent: 'center', marginBottom: 2 },
 
+=======
+  messageInput: { flex: 1, height: 42, borderRadius: 10, backgroundColor: '#F1FAFE', paddingHorizontal: 13, color: ink },
+  sendButton: { width: 42, height: 42, borderRadius: 10, backgroundColor: cyan, alignItems: 'center', justifyContent: 'center', marginLeft: 9 },
+>>>>>>> 867d58274d4ae65dd8e9435f42c2efd4b90eaaa5
   videoPreview: {
     height: 300,
     borderRadius: 16,

@@ -51,15 +51,27 @@ export default function PharmacyScreen({ navigation }) {
     }
   };
 
+<<<<<<< HEAD
+=======
+  const rootNavigation = navigation.getParent?.()?.getParent?.() || navigation.getParent?.() || navigation;
+
+>>>>>>> 867d58274d4ae65dd8e9435f42c2efd4b90eaaa5
   return (
     <SafeAreaView style={styles.safeArea}>
       <View style={styles.header}>
         <TouchableOpacity 
           onPress={() => {
+<<<<<<< HEAD
             if (navigation.canGoBack()) {
               navigation.goBack();
             } else {
               navigation.navigate('Dashboard');
+=======
+            if (rootNavigation.canGoBack()) {
+              rootNavigation.goBack();
+            } else {
+              rootNavigation.navigate('Dashboard');
+>>>>>>> 867d58274d4ae65dd8e9435f42c2efd4b90eaaa5
             }
           }}
         >
