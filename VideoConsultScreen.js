@@ -1,36 +1,17 @@
-<<<<<<< HEAD
 import React, { useMemo, useState } from 'react';
-=======
-import React, { useState } from 'react';
->>>>>>> 867d58274d4ae65dd8e9435f42c2efd4b90eaaa5
 import {
   View,
   Text,
   StyleSheet,
   ScrollView,
   TouchableOpacity,
-<<<<<<< HEAD
   TextInput,
-=======
->>>>>>> 867d58274d4ae65dd8e9435f42c2efd4b90eaaa5
   StatusBar,
   Platform,
+  SafeAreaView,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 
-<<<<<<< HEAD
-=======
-const bottomNavItems = [
-  { label: 'Home', icon: 'home-outline', tab: 'Home' },
-  { label: 'Appointments', icon: 'calendar-outline', tab: 'Appointments' },
-  { label: 'Rx', icon: 'document-text-outline', tab: 'Rx' },
-  { label: 'Pharmacy', icon: 'medkit-outline', tab: 'Pharmacy' },
-  { label: 'PT', icon: 'fitness-outline', tab: 'PT' },
-  { label: 'Profile', icon: 'person-outline', tab: 'Profile' },
-];
-
->>>>>>> 867d58274d4ae65dd8e9435f42c2efd4b90eaaa5
 const onlineServices = [
   {
     title: 'Request Nurse Callback',
@@ -105,7 +86,6 @@ const therapyTags = [
   'PhilHealth Eligible',
 ];
 
-<<<<<<< HEAD
 const searchableServicesSeed = [
   ...onlineServices.map((service) => ({
     id: service.title,
@@ -172,36 +152,6 @@ function AppHeader({ navigation }) {
       <TouchableOpacity style={styles.bellIcon}>
         <Ionicons name="notifications-outline" size={20} color="#0F172A" />
 
-=======
-function AppHeader({ navigation }) {
-  return (
-    <View style={styles.header}>
-      <View style={styles.headerLeft}>
-        <TouchableOpacity
-          style={styles.backButton}
-          onPress={() => {
-            if (navigation.canGoBack()) {
-              navigation.goBack();
-            } else {
-              navigation.navigate('MainTabs');
-            }
-          }}
-        >
-          <Ionicons name="chevron-back" size={23} color="#0F172A" />
-        </TouchableOpacity>
-        <View style={styles.logoContainer}>
-          <View style={styles.logoCircle}>
-            <Text style={styles.logoIconText}>O+</Text>
-          </View>
-          <View>
-            <Text style={styles.logoTitle}>OkieDoc+</Text>
-            <Text style={styles.logoSubtitle}>Your Health Partner</Text>
-          </View>
-        </View>
-      </View>
-      <TouchableOpacity style={styles.bellIcon}>
-        <Ionicons name="notifications-outline" size={19} color="#0F172A" />
->>>>>>> 867d58274d4ae65dd8e9435f42c2efd4b90eaaa5
         <View style={styles.notificationBadge}>
           <Text style={styles.badgeText}>3</Text>
         </View>
@@ -226,7 +176,6 @@ function ModePill({ icon, label, active, activeColor, onPress }) {
   );
 }
 
-<<<<<<< HEAD
 function ServiceSearchBar({
   value,
   onChangeText,
@@ -317,15 +266,12 @@ function EmptySearchState({ onClear }) {
   );
 }
 
-=======
->>>>>>> 867d58274d4ae65dd8e9435f42c2efd4b90eaaa5
-function ServiceCard({ service }) {
+function ServiceCard({ service, onPress }) {
   return (
     <View style={[styles.serviceCard, service.featured && styles.featuredCard]}>
       {service.badge && (
         <View style={[styles.cardBadge, service.featured && styles.featuredBadge]}>
           <Ionicons
-<<<<<<< HEAD
             name={
               service.featured
                 ? 'sparkles'
@@ -348,61 +294,38 @@ function ServiceCard({ service }) {
       <Text style={styles.serviceTitle}>{service.title}</Text>
       <Text style={styles.serviceSubtitle}>{service.subtitle}</Text>
 
-=======
-            name={service.featured ? 'sparkles' : service.title.includes('Nurse') ? 'shield-checkmark-outline' : 'checkmark-circle-outline'}
-            size={11}
-            color="#FFFFFF"
-          />
-          <Text style={styles.cardBadgeText}>{service.badge}</Text>
-        </View>
-      )}
-      <View style={[styles.serviceIcon, { backgroundColor: service.iconBg }]}>
-        <Ionicons name={service.icon} size={29} color={service.iconColor} />
-      </View>
-      <Text style={styles.serviceTitle}>{service.title}</Text>
-      <Text style={styles.serviceSubtitle}>{service.subtitle}</Text>
->>>>>>> 867d58274d4ae65dd8e9435f42c2efd4b90eaaa5
       <View style={styles.timeRow}>
         <Ionicons name="time-outline" size={14} color="#45627F" />
         <Text style={styles.timeText}>{service.time}</Text>
       </View>
-<<<<<<< HEAD
 
       <View style={styles.divider} />
 
-=======
-      <View style={styles.divider} />
->>>>>>> 867d58274d4ae65dd8e9435f42c2efd4b90eaaa5
       {service.pill && (
         <View style={styles.freePill}>
           <Text style={styles.freePillText}>{service.pill}</Text>
         </View>
       )}
-<<<<<<< HEAD
 
-=======
->>>>>>> 867d58274d4ae65dd8e9435f42c2efd4b90eaaa5
       <View style={styles.priceRow}>
-        <Text style={[styles.priceText, service.price === 'Free' && styles.freeText]}>
+        {service.priceIcon && (
+          <MaterialCommunityIcons name={service.priceIcon} size={24} color="#F59E0B" style={{marginRight: 4, marginBottom: 2}} />
+        )}
+        <Text style={[styles.priceText, service.price === 'Free' && styles.freeText, service.priceStyle]}>
           {service.price}
         </Text>
-<<<<<<< HEAD
 
-        {!!service.suffix && <Text style={styles.priceSuffix}> {service.suffix}</Text>}
+        {!!service.suffix && <Text style={[styles.priceSuffix, service.suffixStyle]}> {service.suffix}</Text>}
       </View>
 
-      <Text style={styles.priceNote}>{service.note}</Text>
+      <Text style={[styles.priceNote, service.noteStyle]}>{service.note}</Text>
 
-=======
-        {!!service.suffix && <Text style={styles.priceSuffix}> {service.suffix}</Text>}
-      </View>
-      <Text style={styles.priceNote}>{service.note}</Text>
->>>>>>> 867d58274d4ae65dd8e9435f42c2efd4b90eaaa5
       <TouchableOpacity
         style={[
           styles.selectButton,
           service.buttonColor && { backgroundColor: service.buttonColor },
         ]}
+        onPress={onPress}
       >
         <Text style={styles.selectButtonText}>{service.button}</Text>
         <Ionicons name="arrow-forward" size={16} color="#FFFFFF" />
@@ -419,7 +342,6 @@ function Tag({ label, purple }) {
   );
 }
 
-<<<<<<< HEAD
 export default function VideoConsultScreen({ navigation }) {
   const [selectedMode, setSelectedMode] = useState('pay-per-use');
   const [searchQuery, setSearchQuery] = useState('');
@@ -460,52 +382,11 @@ export default function VideoConsultScreen({ navigation }) {
     setSearchQuery('');
     setSelectedCategory('All');
   };
-=======
-function BottomNav({ navigation }) {
-  return (
-    <View style={styles.bottomNav}>
-      {bottomNavItems.map((item) => (
-        <TouchableOpacity
-          key={item.label}
-          style={styles.bottomNavItem}
-          onPress={() => {
-            if (item.tab) {
-              navigation.setOptions({ animation: 'none' });
-              requestAnimationFrame(() => {
-                navigation.reset({
-                  index: 0,
-                  routes: [{ name: 'MainTabs', params: { screen: item.tab } }],
-                });
-              });
-            }
-          }}
-        >
-          <Ionicons name={item.icon} size={23} color="#64748B" />
-          <Text
-            style={styles.bottomNavLabel}
-            numberOfLines={1}
-            adjustsFontSizeToFit
-            minimumFontScale={0.72}
-          >
-            {item.label}
-          </Text>
-        </TouchableOpacity>
-      ))}
-    </View>
-  );
-}
-
-export default function VideoConsultScreen({ navigation }) {
-  const [selectedMode, setSelectedMode] = useState('pay-per-use');
->>>>>>> 867d58274d4ae65dd8e9435f42c2efd4b90eaaa5
 
   return (
     <SafeAreaView style={styles.safeArea}>
       <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
-<<<<<<< HEAD
 
-=======
->>>>>>> 867d58274d4ae65dd8e9435f42c2efd4b90eaaa5
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
         <AppHeader navigation={navigation} />
 
@@ -514,13 +395,9 @@ export default function VideoConsultScreen({ navigation }) {
             <MaterialCommunityIcons name="medical-bag" size={13} color="#FFFFFF" />
             <Text style={styles.heroPillText}>Healthcare On Demand</Text>
           </View>
-<<<<<<< HEAD
 
           <Text style={styles.heroTitle}>Choose Your Consultation Type</Text>
 
-=======
-          <Text style={styles.heroTitle}>Choose Your Consultation Type</Text>
->>>>>>> 867d58274d4ae65dd8e9435f42c2efd4b90eaaa5
           <Text style={styles.heroSubtitle}>
             Connect with healthcare professionals anytime, anywhere
           </Text>
@@ -529,10 +406,7 @@ export default function VideoConsultScreen({ navigation }) {
         <View style={styles.demoBox}>
           <Text style={styles.demoTitle}>Demo: Select User Type</Text>
           <Text style={styles.demoSubtitle}>See how pricing adapts to different user statuses</Text>
-<<<<<<< HEAD
 
-=======
->>>>>>> 867d58274d4ae65dd8e9435f42c2efd4b90eaaa5
           <View style={styles.modeRow}>
             <ModePill
               icon="diamond-outline"
@@ -541,10 +415,7 @@ export default function VideoConsultScreen({ navigation }) {
               activeColor="#F59E0B"
               onPress={() => setSelectedMode('subscriber')}
             />
-<<<<<<< HEAD
 
-=======
->>>>>>> 867d58274d4ae65dd8e9435f42c2efd4b90eaaa5
             <ModePill
               icon="shield-outline"
               label="PhilHealth"
@@ -553,10 +424,7 @@ export default function VideoConsultScreen({ navigation }) {
               onPress={() => setSelectedMode('philhealth')}
             />
           </View>
-<<<<<<< HEAD
 
-=======
->>>>>>> 867d58274d4ae65dd8e9435f42c2efd4b90eaaa5
           <ModePill
             icon="card-outline"
             label="Pay-per-use"
@@ -566,7 +434,6 @@ export default function VideoConsultScreen({ navigation }) {
           />
         </View>
 
-<<<<<<< HEAD
         <ServiceSearchBar
           value={searchQuery}
           onChangeText={setSearchQuery}
@@ -584,9 +451,52 @@ export default function VideoConsultScreen({ navigation }) {
               <Text style={styles.sectionSubtitle}>Quick access to primary care doctors</Text>
             </View>
 
-            {visibleOnlineServices.map((service) => (
-              <ServiceCard key={service.title} service={service} />
-            ))}
+            {visibleOnlineServices.map((service) => {
+              let displayService = { ...service };
+              if (selectedMode === 'subscriber') {
+                if (service.title === 'Chat Consultation') {
+                  displayService.price = 'Premium Plan';
+                  displayService.priceIcon = 'crown';
+                  displayService.suffix = 'Included in your plan';
+                  displayService.note = '8 sessions remaining this month';
+                  displayService.priceStyle = { fontSize: 22, color: '#F59E0B' };
+                  displayService.suffixStyle = { color: '#D97706', fontWeight: '700', marginBottom: 5 };
+                  displayService.noteStyle = { color: '#0F172A', fontWeight: '600' };
+                } else if (service.title === 'Voice Consultation') {
+                  displayService.price = 'Premium Plan';
+                  displayService.priceIcon = 'crown';
+                  displayService.suffix = 'Included in your plan';
+                  displayService.note = '5 sessions remaining this month';
+                  displayService.priceStyle = { fontSize: 22, color: '#F59E0B' };
+                  displayService.suffixStyle = { color: '#D97706', fontWeight: '700', marginBottom: 5 };
+                  displayService.noteStyle = { color: '#0F172A', fontWeight: '600' };
+                } else if (service.title === 'Video Consultation') {
+                  displayService.price = 'Premium Plan';
+                  displayService.priceIcon = 'crown';
+                  displayService.suffix = 'Included in your plan';
+                  displayService.note = '12 sessions remaining this month';
+                  displayService.priceStyle = { fontSize: 22, color: '#F59E0B' };
+                  displayService.suffixStyle = { color: '#D97706', fontWeight: '700', marginBottom: 5 };
+                  displayService.noteStyle = { color: '#0F172A', fontWeight: '600' };
+                }
+              } else if (selectedMode === 'philhealth') {
+                if (['Chat Consultation', 'Voice Consultation', 'Video Consultation'].includes(service.title)) {
+                  displayService.price = 'PhilHealth Covered';
+                  displayService.suffix = 'Free Consultation';
+                  displayService.note = 'Covered by healthcare benefits';
+                  displayService.priceStyle = { fontSize: 20, color: '#16A34A' };
+                  displayService.suffixStyle = { color: '#15803D', fontWeight: '700', marginBottom: 5 };
+                  displayService.noteStyle = { color: '#0F172A', fontWeight: '600' };
+                }
+              }
+              return (
+                <ServiceCard 
+                  key={displayService.title} 
+                  service={displayService} 
+                  onPress={() => navigation.navigate('ConsultationIntake', { type: displayService.title })} 
+                />
+              );
+            })}
           </>
         )}
 
@@ -615,7 +525,7 @@ export default function VideoConsultScreen({ navigation }) {
                 <Tag label="Flexible Scheduling" />
               </View>
 
-              <TouchableOpacity style={styles.selectButton}>
+              <TouchableOpacity style={styles.selectButton} onPress={() => navigation.navigate('BookPhysical')}>
                 <Text style={styles.selectButtonText}>Schedule Appointment</Text>
                 <Ionicons name="arrow-forward" size={16} color="#FFFFFF" />
               </TouchableOpacity>
@@ -655,12 +565,32 @@ export default function VideoConsultScreen({ navigation }) {
                 ))}
               </View>
 
-              <View style={styles.priceRow}>
-                <Text style={styles.pricePrefix}>From </Text>
-                <Text style={styles.priceText}>$75</Text>
-              </View>
-
-              <Text style={styles.priceNote}>Varies by specialty</Text>
+              {selectedMode === 'subscriber' ? (
+                <>
+                  <View style={styles.priceRow}>
+                    <MaterialCommunityIcons name="crown" size={24} color="#F59E0B" style={{marginRight: 4, marginBottom: 2}} />
+                    <Text style={[styles.priceText, { fontSize: 22, color: '#F59E0B' }]}>Premium Member</Text>
+                    <Text style={[styles.priceSuffix, { color: '#D97706', fontWeight: '700', marginBottom: 5 }]}>  20% Discount</Text>
+                  </View>
+                  <Text style={[styles.priceNote, { color: '#0F172A', fontWeight: '600' }]}>Exclusive pricing for subscribers</Text>
+                </>
+              ) : selectedMode === 'philhealth' ? (
+                <>
+                  <View style={styles.priceRow}>
+                    <Text style={[styles.priceText, { fontSize: 22, color: '#16A34A' }]}>PhilHealth</Text>
+                    <Text style={[styles.priceSuffix, { color: '#15803D', fontWeight: '700', marginBottom: 5 }]}>  Covered if referred</Text>
+                  </View>
+                  <Text style={[styles.priceNote, { color: '#0F172A', fontWeight: '600' }]}>Free with valid PhilHealth referral</Text>
+                </>
+              ) : (
+                <>
+                  <View style={styles.priceRow}>
+                    <Text style={styles.pricePrefix}>From </Text>
+                    <Text style={styles.priceText}>$75</Text>
+                  </View>
+                  <Text style={styles.priceNote}>Varies by specialty</Text>
+                </>
+              )}
 
               <TouchableOpacity style={styles.purpleButton} onPress={() => navigation.navigate('BookSpecialist')}>
                 <Text style={styles.selectButtonText}>Book Specialist</Text>
@@ -718,114 +648,6 @@ export default function VideoConsultScreen({ navigation }) {
             Experience seamless healthcare delivery with our comprehensive platform
           </Text>
 
-=======
-        <View style={styles.sectionIntro}>
-          <Text style={styles.sectionTitle}>General Physician</Text>
-          <Text style={styles.sectionSubtitle}>Quick access to primary care doctors</Text>
-        </View>
-
-        {onlineServices.map((service) => (
-          <ServiceCard key={service.title} service={service} />
-        ))}
-
-        <View style={styles.sectionIntro}>
-          <Text style={styles.sectionTitle}>In-Person Consultation</Text>
-          <Text style={styles.sectionSubtitle}>Book an appointment at our clinics</Text>
-        </View>
-
-        <View style={styles.clinicCard}>
-          <View style={[styles.serviceIcon, styles.clinicIcon]}>
-            <Ionicons name="calendar-outline" size={28} color="#FFFFFF" />
-          </View>
-          <Text style={styles.serviceTitle}>Book Physical Consultation</Text>
-          <Text style={styles.serviceSubtitle}>
-            Schedule an in-person visit with our healthcare professionals at convenient locations
-            across the metro
-          </Text>
-          <View style={styles.tagRow}>
-            <Tag label="Multiple Locations" />
-            <Tag label="Various Specialties" />
-            <Tag label="Flexible Scheduling" />
-          </View>
-          <TouchableOpacity style={styles.selectButton}>
-            <Text style={styles.selectButtonText}>Schedule Appointment</Text>
-            <Ionicons name="arrow-forward" size={16} color="#FFFFFF" />
-          </TouchableOpacity>
-        </View>
-
-        <View style={styles.sectionIntro}>
-          <Text style={styles.sectionTitle}>Specialist Services</Text>
-          <Text style={styles.sectionSubtitle}>Access to specialized medical expertise</Text>
-        </View>
-
-        <View style={styles.specialistCard}>
-          <View style={styles.specialistTop}>
-            <View style={styles.specialistIcon}>
-              <MaterialCommunityIcons name="stethoscope" size={32} color="#8B5CF6" />
-            </View>
-            <View style={styles.specialistCopy}>
-              <Text style={styles.specialistTitle}>Book Specialist Consultation</Text>
-              <Text style={styles.serviceSubtitle}>Expert care for specialized medical needs</Text>
-              <View style={styles.timeRow}>
-                <Ionicons name="time-outline" size={14} color="#45627F" />
-                <Text style={styles.timeText}>30-45 minutes</Text>
-              </View>
-            </View>
-          </View>
-          <Text style={styles.specialtyLabel}>Available Specialties:</Text>
-          <View style={styles.tagRow}>
-            {specialtyTags.map((tag) => (
-              <Tag key={tag} label={tag} purple />
-            ))}
-          </View>
-          <View style={styles.priceRow}>
-            <Text style={styles.pricePrefix}>From </Text>
-            <Text style={styles.priceText}>$75</Text>
-          </View>
-          <Text style={styles.priceNote}>Varies by specialty</Text>
-          <TouchableOpacity style={styles.purpleButton}>
-            <Text style={styles.selectButtonText}>Book Specialist</Text>
-            <Ionicons name="arrow-forward" size={16} color="#FFFFFF" />
-          </TouchableOpacity>
-        </View>
-
-        <View style={styles.sectionIntro}>
-          <Text style={styles.sectionTitle}>Rehabilitation Therapy</Text>
-          <Text style={styles.sectionSubtitle}>
-            Professional therapy sessions for recovery and wellness
-          </Text>
-        </View>
-
-        <View style={[styles.clinicCard, styles.therapyCard]}>
-          <View style={[styles.serviceIcon, styles.therapyIcon]}>
-            <Ionicons name="heart-outline" size={30} color="#FFFFFF" />
-          </View>
-          <Text style={styles.serviceTitle}>Book Therapy Session</Text>
-          <Text style={styles.serviceSubtitle}>
-            Professional rehabilitation therapy including physical, occupational, and speech therapy
-            services
-          </Text>
-          <View style={styles.tagRow}>
-            {therapyTags.map((tag) => (
-              <Tag key={tag} label={tag} />
-            ))}
-          </View>
-          <TouchableOpacity style={styles.selectButton}>
-            <Text style={styles.selectButtonText}>Book Therapy</Text>
-            <Ionicons name="arrow-forward" size={16} color="#FFFFFF" />
-          </TouchableOpacity>
-        </View>
-
-        <View style={styles.whyCard}>
-          <View style={styles.whyCircle} />
-          <View style={styles.whySmallPill}>
-            <Text style={styles.whySmallText}>Why OkieDoc+</Text>
-          </View>
-          <Text style={styles.whyTitle}>Quality Healthcare at Your Fingertips</Text>
-          <Text style={styles.whySubtitle}>
-            Experience seamless healthcare delivery with our comprehensive platform
-          </Text>
->>>>>>> 867d58274d4ae65dd8e9435f42c2efd4b90eaaa5
           {[
             'Board Certified Physicians',
             'Secure & HIPAA Compliant',
@@ -843,20 +665,13 @@ export default function VideoConsultScreen({ navigation }) {
           <Text style={styles.helpText}>
             Need help choosing? Our care coordinators are available 24/7
           </Text>
-<<<<<<< HEAD
 
-=======
->>>>>>> 867d58274d4ae65dd8e9435f42c2efd4b90eaaa5
           <TouchableOpacity style={styles.helpButton}>
             <Ionicons name="call-outline" size={16} color="#0284A8" />
             <Text style={styles.helpButtonText}>Talk to Care Team</Text>
           </TouchableOpacity>
         </View>
       </ScrollView>
-<<<<<<< HEAD
-=======
-      <BottomNav navigation={navigation} />
->>>>>>> 867d58274d4ae65dd8e9435f42c2efd4b90eaaa5
     </SafeAreaView>
   );
 }
@@ -864,61 +679,29 @@ export default function VideoConsultScreen({ navigation }) {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: '#ffffff',
   },
   scrollContent: {
-    backgroundColor: '#F1FAFE',
-<<<<<<< HEAD
+    backgroundColor: '#ffffff',
     paddingBottom: 40,
-=======
-    paddingBottom: 98,
->>>>>>> 867d58274d4ae65dd8e9435f42c2efd4b90eaaa5
   },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     backgroundColor: '#FFFFFF',
-<<<<<<< HEAD
     paddingHorizontal: 12,
     paddingTop: Platform.OS === 'android' ? 12 : 6,
     paddingBottom: 14,
-=======
-    borderBottomWidth: 1,
-    borderBottomColor: '#E2E8F0',
-    paddingHorizontal: 7,
-    paddingTop: Platform.OS === 'android' ? 6 : 4,
-    paddingBottom: 12,
->>>>>>> 867d58274d4ae65dd8e9435f42c2efd4b90eaaa5
   },
   logoContainer: {
     flexDirection: 'row',
     alignItems: 'center',
   },
-<<<<<<< HEAD
   logoCircle: {
     width: 40,
     height: 40,
     borderRadius: 11,
-=======
-  headerLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    flex: 1,
-  },
-  backButton: {
-    width: 34,
-    height: 34,
-    borderRadius: 17,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginRight: 4,
-  },
-  logoCircle: {
-    width: 40,
-    height: 40,
-    borderRadius: 10,
->>>>>>> 867d58274d4ae65dd8e9435f42c2efd4b90eaaa5
     backgroundColor: '#089FB4',
     justifyContent: 'center',
     alignItems: 'center',
@@ -931,36 +714,22 @@ const styles = StyleSheet.create({
   },
   logoTitle: {
     color: '#0F172A',
-<<<<<<< HEAD
     fontSize: 17,
     fontWeight: '700',
   },
   logoSubtitle: {
     color: '#64748B',
-=======
-    fontSize: 16,
-    fontWeight: '700',
-  },
-  logoSubtitle: {
-    color: '#45627F',
->>>>>>> 867d58274d4ae65dd8e9435f42c2efd4b90eaaa5
     fontSize: 10,
   },
   bellIcon: {
     position: 'relative',
-<<<<<<< HEAD
     width: 32,
     height: 32,
-=======
-    width: 30,
-    height: 30,
->>>>>>> 867d58274d4ae65dd8e9435f42c2efd4b90eaaa5
     alignItems: 'center',
     justifyContent: 'center',
   },
   notificationBadge: {
     position: 'absolute',
-<<<<<<< HEAD
     top: 0,
     right: 0,
     backgroundColor: '#EF4444',
@@ -969,27 +738,13 @@ const styles = StyleSheet.create({
     height: 17,
     justifyContent: 'center',
     alignItems: 'center',
-=======
-    top: 1,
-    right: 1,
-    width: 16,
-    height: 16,
-    borderRadius: 8,
-    backgroundColor: '#DC2626',
-    alignItems: 'center',
-    justifyContent: 'center',
->>>>>>> 867d58274d4ae65dd8e9435f42c2efd4b90eaaa5
     borderWidth: 1,
     borderColor: '#FFFFFF',
   },
   badgeText: {
     color: '#FFFFFF',
     fontSize: 9,
-<<<<<<< HEAD
     fontWeight: 'bold',
-=======
-    fontWeight: '800',
->>>>>>> 867d58274d4ae65dd8e9435f42c2efd4b90eaaa5
   },
   hero: {
     alignItems: 'center',
@@ -1080,7 +835,6 @@ const styles = StyleSheet.create({
   modeTextActive: {
     color: '#FFFFFF',
   },
-<<<<<<< HEAD
   searchPanel: {
     backgroundColor: '#FFFFFF',
     marginHorizontal: 7,
@@ -1200,8 +954,6 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '800',
   },
-=======
->>>>>>> 867d58274d4ae65dd8e9435f42c2efd4b90eaaa5
   sectionIntro: {
     paddingHorizontal: 7,
     marginTop: 4,
@@ -1355,11 +1107,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#88DDE2',
     borderRadius: 11,
-<<<<<<< HEAD
     marginHorizontal: 7,
-=======
-    marginHorizontal: 0,
->>>>>>> 867d58274d4ae65dd8e9435f42c2efd4b90eaaa5
     marginBottom: 24,
     padding: 20,
   },
@@ -1447,10 +1195,6 @@ const styles = StyleSheet.create({
   },
   therapyCard: {
     borderColor: '#A8E8E4',
-<<<<<<< HEAD
-=======
-    marginHorizontal: 8,
->>>>>>> 867d58274d4ae65dd8e9435f42c2efd4b90eaaa5
   },
   therapyIcon: {
     backgroundColor: '#0EAAA4',
@@ -1458,11 +1202,7 @@ const styles = StyleSheet.create({
   whyCard: {
     backgroundColor: '#0FAEAF',
     borderRadius: 11,
-<<<<<<< HEAD
     marginHorizontal: 7,
-=======
-    marginHorizontal: 0,
->>>>>>> 867d58274d4ae65dd8e9435f42c2efd4b90eaaa5
     marginTop: 20,
     marginBottom: 64,
     paddingHorizontal: 27,
@@ -1554,37 +1294,4 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     marginLeft: 10,
   },
-<<<<<<< HEAD
 });
-=======
-  bottomNav: {
-    position: 'absolute',
-    left: 0,
-    right: 0,
-    bottom: 0,
-    minHeight: Platform.OS === 'ios' ? 82 : 70,
-    paddingTop: 9,
-    paddingBottom: Platform.OS === 'ios' ? 18 : 10,
-    paddingHorizontal: 2,
-    backgroundColor: '#FFFFFF',
-    borderTopWidth: 1,
-    borderTopColor: '#E2E8F0',
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-around',
-  },
-  bottomNavItem: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    minWidth: 0,
-  },
-  bottomNavLabel: {
-    color: '#64748B',
-    fontSize: 11,
-    fontWeight: '500',
-    marginTop: 4,
-    textAlign: 'center',
-  },
-});
->>>>>>> 867d58274d4ae65dd8e9435f42c2efd4b90eaaa5

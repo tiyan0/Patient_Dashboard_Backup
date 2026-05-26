@@ -1,8 +1,4 @@
-<<<<<<< HEAD
-import React, { useState, useEffect } from 'react';
-=======
-import React, { useState } from 'react';
->>>>>>> 867d58274d4ae65dd8e9435f42c2efd4b90eaaa5
+import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -12,21 +8,25 @@ import {
   TextInput,
   Platform,
   StatusBar,
-<<<<<<< HEAD
   Modal,
-=======
->>>>>>> 867d58274d4ae65dd8e9435f42c2efd4b90eaaa5
+  Image,
+  Alert,
+  KeyboardAvoidingView,
+  Animated,
+  SafeAreaView,
+  Switch,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
+import Svg, { Circle, Rect } from 'react-native-svg';
+import * as ImagePicker from 'expo-image-picker';
+import DateTimePicker from '@react-native-community/datetimepicker';
 
 const teal = '#0AB4B5';
 const cyan = '#089FB4';
-const bg = '#F1FAFE';
+const bg = '#ffffff';
 const ink = '#071C3A';
 const muted = '#45627F';
 
-<<<<<<< HEAD
 function Header({ title, subtitle, icon, navigation, hideBackButton }) {
   return (
     <View style={styles.header}>
@@ -44,26 +44,6 @@ function Header({ title, subtitle, icon, navigation, hideBackButton }) {
           <Ionicons name="chevron-back" size={23} color={ink} />
         </TouchableOpacity>
       )}
-=======
-function navigateRoot(navigation, name, params) {
-  const rootNavigation = navigation?.getParent?.()?.getParent?.() || navigation?.getParent?.() || navigation;
-  rootNavigation?.navigate?.(name, params);
-}
-
-function Header({ title, subtitle, icon, navigation }) {
-  return (
-    <View style={styles.header}>
-      <TouchableOpacity
-        style={styles.backButton}
-        onPress={() => {
-          if (navigation?.canGoBack?.()) {
-            navigation.goBack();
-          }
-        }}
-      >
-        <Ionicons name="chevron-back" size={23} color={ink} />
-      </TouchableOpacity>
->>>>>>> 867d58274d4ae65dd8e9435f42c2efd4b90eaaa5
       <View style={styles.headerIcon}>
         <Ionicons name={icon} size={22} color="#FFFFFF" />
       </View>
@@ -75,22 +55,16 @@ function Header({ title, subtitle, icon, navigation }) {
   );
 }
 
-<<<<<<< HEAD
 function Screen({ children, title, subtitle, icon, navigation, hideBackButton }) {
   return (
     <SafeAreaView style={styles.safeArea}>
       <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
-      <Header title={title} subtitle={subtitle} icon={icon} navigation={navigation} hideBackButton={hideBackButton} />
-=======
-function Screen({ children, title, subtitle, icon, navigation }) {
-  return (
-    <SafeAreaView style={styles.safeArea}>
-      <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
-      <Header title={title} subtitle={subtitle} icon={icon} navigation={navigation} />
->>>>>>> 867d58274d4ae65dd8e9435f42c2efd4b90eaaa5
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.content}>
-        {children}
-      </ScrollView>
+      <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+        <Header title={title} subtitle={subtitle} icon={icon} navigation={navigation} hideBackButton={hideBackButton} />
+        <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
+          {children}
+        </ScrollView>
+      </KeyboardAvoidingView>
     </SafeAreaView>
   );
 }
@@ -103,9 +77,9 @@ function Pill({ label, color = teal }) {
   );
 }
 
-function PrimaryButton({ label, icon = 'arrow-forward', color = cyan, onPress }) {
+function PrimaryButton({ label, icon = 'arrow-forward', color = cyan, onPress, disabled }) {
   return (
-    <TouchableOpacity style={[styles.primaryButton, { backgroundColor: color }]} onPress={onPress}>
+    <TouchableOpacity style={[styles.primaryButton, { backgroundColor: color }]} onPress={onPress} disabled={disabled}>
       <Text style={styles.primaryButtonText}>{label}</Text>
       <Ionicons name={icon} size={16} color="#FFFFFF" />
     </TouchableOpacity>
@@ -116,20 +90,72 @@ function Card({ children, style }) {
   return <View style={[styles.card, style]}>{children}</View>;
 }
 
-<<<<<<< HEAD
+function AnimatedSelectionCard({ isSelected, onPress, disabled, children, disabledStyle }) {
+  const anim = useRef(new Animated.Value(isSelected ? 1 : 0)).current;
+
+  useEffect(() => {
+    Animated.timing(anim, {
+      toValue: isSelected ? 1 : 0,
+      duration: 300,
+      useNativeDriver: false,
+    }).start();
+  }, [isSelected]);
+
+  const backgroundColor = anim.interpolate({
+    inputRange: [0, 1],
+    outputRange: ['#FFFFFF', '#E8F6FA']
+  });
+
+  const borderColor = anim.interpolate({
+    inputRange: [0, 1],
+    outputRange: ['#F1F5F9', '#089FB4']
+  });
+
+  return (
+    <TouchableOpacity onPress={onPress} disabled={disabled} activeOpacity={0.7} style={disabled && disabledStyle}>
+      <Animated.View style={[styles.card, { backgroundColor, borderColor, borderWidth: isSelected ? 2 : 1 }]}>
+        {children}
+      </Animated.View>
+    </TouchableOpacity>
+  );
+}
+
+const AnimatedCircle = Animated.createAnimatedComponent(Circle);
+const AnimatedRect = Animated.createAnimatedComponent(Rect);
+
+function AnimatedBodyPart({ part, isSelected, onPress }) {
+  const anim = useRef(new Animated.Value(isSelected ? 1 : 0)).current;
+
+  useEffect(() => {
+    Animated.timing(anim, {
+      toValue: isSelected ? 1 : 0,
+      duration: 250,
+      useNativeDriver: false,
+    }).start();
+  }, [isSelected]);
+
+  const fill = anim.interpolate({
+    inputRange: [0, 1],
+    outputRange: ['#FFFFFF', '#FEF2F2']
+  });
+
+  const stroke = anim.interpolate({
+    inputRange: [0, 1],
+    outputRange: ['#CBD5E1', '#EF4444']
+  });
+
+  if (part.isCircle) {
+    return <AnimatedCircle cx={part.cx} cy={part.cy} r={part.r} fill={fill} stroke={stroke} strokeWidth="2" onPress={onPress} />;
+  }
+  return <AnimatedRect x={part.x} y={part.y} width={part.w} height={part.h} rx={part.rx || 0} fill={fill} stroke={stroke} strokeWidth="2" onPress={onPress} />;
+}
+
 export function AppointmentsScreen({ navigation, route }) {
   const [selected, setSelected] = useState('Upcoming');
 
   const [upcomingAppointments, setUpcomingAppointments] = useState([
     {
       id: '1',
-=======
-export function AppointmentsScreen({ navigation }) {
-  const [selected, setSelected] = useState('Upcoming');
-
-  const upcomingAppointments = [
-    {
->>>>>>> 867d58274d4ae65dd8e9435f42c2efd4b90eaaa5
       doctor: 'Dr. Sarah Johnson',
       specialty: 'Family Medicine',
       status: 'Confirmed',
@@ -140,10 +166,7 @@ export function AppointmentsScreen({ navigation }) {
       actions: ['Join Call', 'Message']
     },
     {
-<<<<<<< HEAD
       id: '2',
-=======
->>>>>>> 867d58274d4ae65dd8e9435f42c2efd4b90eaaa5
       doctor: 'Dr. Miguel Reyes',
       specialty: 'Orthopedic Surgeon',
       status: 'Pending',
@@ -151,7 +174,6 @@ export function AppointmentsScreen({ navigation }) {
       time: '10:00 AM',
       type: 'Clinic Visit',
       color: '#F59E0B',
-<<<<<<< HEAD
       actions: ['Message']
     }
   ]);
@@ -166,11 +188,6 @@ export function AppointmentsScreen({ navigation }) {
       navigation.setParams({ newAppointment: undefined });
     }
   }, [route?.params?.newAppointment]);
-=======
-      actions: ['Reschedule', 'Details']
-    }
-  ];
->>>>>>> 867d58274d4ae65dd8e9435f42c2efd4b90eaaa5
 
   const pastAppointments = [
     {
@@ -181,11 +198,7 @@ export function AppointmentsScreen({ navigation }) {
       time: '1:00 PM',
       type: 'Video Consultation',
       color: '#10B981',
-<<<<<<< HEAD
       actions: []
-=======
-      actions: ['View Summary', 'Book Again']
->>>>>>> 867d58274d4ae65dd8e9435f42c2efd4b90eaaa5
     }
   ];
 
@@ -207,11 +220,7 @@ export function AppointmentsScreen({ navigation }) {
         </View>
         <TouchableOpacity 
           style={{ backgroundColor: cyan, paddingHorizontal: 12, height: 34, borderRadius: 8, flexDirection: 'row', alignItems: 'center' }}
-<<<<<<< HEAD
           onPress={() => navigation.navigate('VideoConsult')}
-=======
-          onPress={() => navigateRoot(navigation, 'VideoConsult')}
->>>>>>> 867d58274d4ae65dd8e9435f42c2efd4b90eaaa5
         >
           <Ionicons name="add" size={16} color="#FFFFFF" style={{ marginRight: 2 }} />
           <Text style={{ color: '#FFFFFF', fontSize: 12, fontWeight: '800' }}>Book Appt</Text>
@@ -247,15 +256,9 @@ export function AppointmentsScreen({ navigation }) {
                   key={act} 
                   style={[styles.outlineButton, isPrimary && { backgroundColor: cyan, borderColor: cyan }]}
                   onPress={() => {
-<<<<<<< HEAD
                     if (act === 'Join Call') navigation.navigate('JoinVideoCall');
                     else if (act === 'Message') navigation.navigate('Messages');
                     else if (act === 'Book Again') navigation.navigate('VideoConsult');
-=======
-                    if (act === 'Join Call') navigateRoot(navigation, 'JoinVideoCall');
-                    else if (act === 'Message') navigateRoot(navigation, 'Messages');
-                    else if (act === 'Book Again') navigateRoot(navigation, 'VideoConsult');
->>>>>>> 867d58274d4ae65dd8e9435f42c2efd4b90eaaa5
                   }}
                 >
                   <Text style={[styles.outlineButtonText, isPrimary && { color: '#FFFFFF' }]}>{act}</Text>
@@ -270,7 +273,15 @@ export function AppointmentsScreen({ navigation }) {
 }
 
 export function PrescriptionsScreen({ navigation }) {
-<<<<<<< HEAD
+  const [showReminderModal, setShowReminderModal] = useState(false);
+  const [reminders, setReminders] = useState([]);
+  const [selectedMed, setSelectedMed] = useState('');
+  const [selectedTime, setSelectedTime] = useState('');
+  const [showMedDropdown, setShowMedDropdown] = useState(false);
+  const [showTimePicker, setShowTimePicker] = useState(false);
+  const [pickerTime, setPickerTime] = useState(new Date());
+  const [showRenewalModal, setShowRenewalModal] = useState(false);
+  const [renewalMed, setRenewalMed] = useState(null);
 
   const prescriptions = [
     {
@@ -326,8 +337,32 @@ export function PrescriptionsScreen({ navigation }) {
   const activeMeds = prescriptions.filter(med => med.status !== 'Past');
   const pastMeds = prescriptions.filter(med => med.status === 'Past');
 
+  const handleTimeChange = (event, selectedDate) => {
+    if (Platform.OS === 'android') setShowTimePicker(false);
+    if (selectedDate) {
+      setPickerTime(selectedDate);
+      const formattedTime = selectedDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+      setSelectedTime(formattedTime);
+    }
+  };
+
+  const saveReminder = () => {
+    if (selectedMed && selectedTime) {
+      setReminders([...reminders, { id: Date.now().toString(), medication: selectedMed, time: selectedTime }]);
+      setShowReminderModal(false);
+      setSelectedMed('');
+      setSelectedTime('');
+      setShowMedDropdown(false);
+    }
+  };
+
+  const removeReminder = (id) => {
+    setReminders(reminders.filter(r => r.id !== id));
+  };
+
   return (
-    <Screen title="Prescriptions" subtitle="Manage your medications" icon="document-text-outline" navigation={navigation}>
+    <>
+      <Screen title="Prescriptions" subtitle="Manage your medications" icon="document-text-outline" navigation={navigation}>
       <Text style={[styles.sectionHeader, { marginTop: 0, marginBottom: 12 }]}>Active Medications</Text>
 
       {/* Refill Reminder */}
@@ -339,7 +374,13 @@ export function PrescriptionsScreen({ navigation }) {
           <Text style={{ color: ink, fontSize: 15, fontWeight: '800', marginBottom: 2 }}>Refill Reminder</Text>
           <Text style={{ color: muted, fontSize: 12, lineHeight: 16 }}>Atorvastatin requires a new prescription soon.</Text>
         </View>
-        <TouchableOpacity style={{ backgroundColor: '#F59E0B', paddingHorizontal: 12, paddingVertical: 8, borderRadius: 8 }}>
+        <TouchableOpacity 
+          style={{ backgroundColor: '#F59E0B', paddingHorizontal: 12, paddingVertical: 8, borderRadius: 8 }}
+          onPress={() => {
+            setRenewalMed({ name: 'Atorvastatin', prescriber: 'Dr. Sarah Johnson' });
+            setShowRenewalModal(true);
+          }}
+        >
           <Text style={{ color: '#FFFFFF', fontSize: 12, fontWeight: '800' }}>Refill Now</Text>
         </TouchableOpacity>
       </Card>
@@ -387,6 +428,10 @@ export function PrescriptionsScreen({ navigation }) {
             </View>
             <TouchableOpacity 
               style={[styles.outlineButton, { flex: 0, paddingHorizontal: 16, backgroundColor: med.color === '#EF4444' ? '#EF4444' : cyan, borderColor: med.color === '#EF4444' ? '#EF4444' : cyan }]}
+              onPress={() => {
+                setRenewalMed(med);
+                setShowRenewalModal(true);
+              }}
             >
               <Text style={[styles.outlineButtonText, { color: '#FFFFFF' }]}>
                 {med.daysRemaining === 0 ? 'Request Renewal' : 'Refill Now'}
@@ -428,170 +473,522 @@ export function PrescriptionsScreen({ navigation }) {
       ))}
 
       {/* Medication Reminders Box */}
-      <Card style={{ marginTop: 12, marginBottom: 24 }}>
+      <Text style={[styles.sectionHeader, { marginTop: 12, marginBottom: 12 }]}>Reminders</Text>
+      
+      {reminders.map((rem) => (
+        <Card key={rem.id} style={{ marginBottom: 12, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}>
+            <View style={[styles.recordIcon, { backgroundColor: teal + '15', marginRight: 12 }]}>
+              <Ionicons name="alarm-outline" size={20} color={teal} />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.cardTitle}>{rem.medication}</Text>
+              <Text style={styles.bodyText}>Scheduled for {rem.time}</Text>
+            </View>
+          </View>
+          <TouchableOpacity onPress={() => removeReminder(rem.id)} style={{ padding: 8 }}>
+            <Ionicons name="trash-outline" size={20} color="#EF4444" />
+          </TouchableOpacity>
+        </Card>
+      ))}
+
+      <Card style={{ marginTop: reminders.length === 0 ? 0 : 12, marginBottom: 24 }}>
         <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 16 }}>
           <View style={[styles.recordIcon, { backgroundColor: cyan + '15', marginRight: 12 }]}>
             <Ionicons name="notifications-outline" size={24} color={cyan} />
           </View>
           <View style={{ flex: 1 }}>
-            <Text style={styles.cardTitle}>Medication Reminders</Text>
+            <Text style={styles.cardTitle}>Configure Reminders</Text>
             <Text style={styles.bodyText}>Set up automated reminders to never miss a dose</Text>
           </View>
         </View>
-        <PrimaryButton label="Configure Reminders" icon="alarm-outline" />
+        <PrimaryButton label="Add Reminder" icon="add" onPress={() => setShowReminderModal(true)} />
       </Card>
-=======
-  const meds = [
-    ['Lisinopril', '10mg tablet', 'Take once daily', 'Refill in 5 days', '#F59E0B'],
-    ['Metformin', '500mg tablet', 'Take twice daily with meals', 'Refill in 30 days', '#10B981'],
-    ['Atorvastatin', '20mg tablet', 'Take every evening', 'Active', '#089FB4'],
-  ];
+      </Screen>
 
-  return (
-    <Screen title="Prescriptions" subtitle="Track medications and refills" icon="document-text-outline" navigation={navigation}>
-      <Card style={styles.heroCard}>
-        <View style={styles.rowBetween}>
-          <View>
-            <Text style={styles.heroEyebrow}>Medication Summary</Text>
-            <Text style={styles.largeTitle}>3 Active</Text>
-          </View>
-          <View style={styles.bigIcon}>
-            <Ionicons name="medical-outline" size={30} color="#FFFFFF" />
+      {/* Reminder Configuration Modal */}
+      <Modal visible={showReminderModal} transparent={true} animationType="fade" onRequestClose={() => setShowReminderModal(false)}>
+        <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', alignItems: 'center', padding: 20 }}>
+          <View style={{ backgroundColor: '#FFFFFF', borderRadius: 16, padding: 20, width: '100%', maxWidth: 340, shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.2, shadowRadius: 10, elevation: 5 }}>
+            <Text style={[styles.largeTitle, { fontSize: 20, marginBottom: 16 }]}>Add Reminder</Text>
+            
+            <Text style={styles.inputLabel}>Select Medication *</Text>
+            <TouchableOpacity 
+              style={[styles.textInput, { justifyContent: 'center', marginBottom: 12 }]} 
+              onPress={() => setShowMedDropdown(!showMedDropdown)}
+            >
+              <View style={{ flexDirection: 'row', alignItems: 'center', width: '100%' }}>
+                <Text style={{ flex: 1, color: selectedMed ? ink : '#94A3B8' }}>{selectedMed || 'Choose medication'}</Text>
+                <Ionicons name={showMedDropdown ? "chevron-up" : "chevron-down"} size={18} color={muted} />
+              </View>
+            </TouchableOpacity>
+
+            {showMedDropdown && (
+               <View style={{ backgroundColor: '#F8FAFC', borderRadius: 8, borderWidth: 1, borderColor: '#E2E8F0', padding: 8, marginBottom: 16 }}>
+                 <ScrollView nestedScrollEnabled style={{ maxHeight: 150 }}>
+                   {activeMeds.map(med => (
+                     <TouchableOpacity key={med.name} style={{ paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: '#F1F5F9' }} onPress={() => { setSelectedMed(med.name); setShowMedDropdown(false); }}>
+                       <Text style={{ color: ink, fontSize: 14 }}>{med.name}</Text>
+                     </TouchableOpacity>
+                   ))}
+                 </ScrollView>
+               </View>
+            )}
+
+            <Text style={styles.inputLabel}>Time *</Text>
+            <TouchableOpacity 
+              style={[styles.textInput, { justifyContent: 'center', marginBottom: showTimePicker ? 8 : 24 }]} 
+              onPress={() => setShowTimePicker(true)}
+            >
+              <View style={{ flexDirection: 'row', alignItems: 'center', width: '100%' }}>
+                <Ionicons name="time-outline" size={18} color={muted} style={{ marginRight: 8 }} />
+                <Text style={{ flex: 1, color: selectedTime ? ink : '#94A3B8' }}>{selectedTime || 'Select a time'}</Text>
+              </View>
+            </TouchableOpacity>
+
+            {showTimePicker && (
+              <View style={{ alignItems: 'flex-start', marginBottom: 24 }}>
+                <DateTimePicker
+                  value={pickerTime}
+                  mode="time"
+                  is24Hour={false}
+                  display="default"
+                  onChange={handleTimeChange}
+                />
+              </View>
+            )}
+
+            <View style={{ flexDirection: 'row', gap: 12 }}>
+              <TouchableOpacity style={[styles.outlineButton, { flex: 1 }]} onPress={() => { setShowReminderModal(false); setShowMedDropdown(false); setSelectedMed(''); setSelectedTime(''); }}>
+                <Text style={styles.outlineButtonText}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity 
+                style={[styles.primaryButton, { flex: 1, marginTop: 0, backgroundColor: (!selectedMed || !selectedTime) ? '#CBD5E1' : cyan }]} 
+                onPress={saveReminder}
+                disabled={!selectedMed || !selectedTime}
+              >
+                <Text style={styles.primaryButtonText}>Save</Text>
+              </TouchableOpacity>
+            </View>
           </View>
         </View>
-        <Text style={styles.bodyText}>One medication needs refill attention soon.</Text>
-      </Card>
+      </Modal>
 
-      {meds.map(([name, dose, instruction, refill, color]) => (
-        <Card key={name}>
-          <View style={styles.rowBetween}>
-            <View style={{ flex: 1 }}>
-              <Text style={styles.cardTitle}>{name}</Text>
-              <Text style={styles.bodyText}>{dose}</Text>
+      {/* Renewal Request Modal */}
+      <Modal visible={showRenewalModal} transparent={true} animationType="fade" onRequestClose={() => setShowRenewalModal(false)}>
+        <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', alignItems: 'center', padding: 20 }}>
+          <View style={{ backgroundColor: '#FFFFFF', borderRadius: 16, padding: 20, width: '100%', maxWidth: 340, shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.2, shadowRadius: 10, elevation: 5 }}>
+            <Text style={[styles.largeTitle, { fontSize: 20, marginBottom: 8 }]}>Request Renewal</Text>
+            <Text style={[styles.bodyText, { marginBottom: 16 }]}>
+              Submit a renewal request for <Text style={{ fontWeight: '700', color: ink }}>{renewalMed?.name}</Text>.
+            </Text>
+
+            <Text style={styles.inputLabel}>Preferred Pharmacy</Text>
+            <TextInput style={[styles.textInput, { marginBottom: 16 }]} placeholder="e.g. CVS Pharmacy" placeholderTextColor="#94A3B8" />
+
+            <Text style={styles.inputLabel}>Additional Notes (Optional)</Text>
+            <TextInput style={[styles.textInput, { height: 80, paddingTop: 12, marginBottom: 24 }]} placeholder="Any notes for the doctor..." placeholderTextColor="#94A3B8" multiline />
+
+            <View style={{ flexDirection: 'row', gap: 12 }}>
+              <TouchableOpacity style={[styles.outlineButton, { flex: 1 }]} onPress={() => setShowRenewalModal(false)}>
+                <Text style={styles.outlineButtonText}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity 
+                style={[styles.primaryButton, { flex: 1, marginTop: 0 }]} 
+                onPress={() => {
+                  setShowRenewalModal(false);
+                  Alert.alert("Request Sent", `Your renewal request for ${renewalMed?.name} has been sent to ${renewalMed?.prescriber}.`);
+                }}
+              >
+                <Text style={styles.primaryButtonText}>Submit</Text>
+              </TouchableOpacity>
             </View>
-            <Pill label={refill} color={color} />
           </View>
-          <View style={styles.metaRow}>
-            <Ionicons name="alarm-outline" size={16} color={muted} />
-            <Text style={styles.metaText}>{instruction}</Text>
-          </View>
-          <PrimaryButton label="Request Refill" icon="refresh" color={color === '#F59E0B' ? '#F59E0B' : cyan} />
-        </Card>
-      ))}
->>>>>>> 867d58274d4ae65dd8e9435f42c2efd4b90eaaa5
-    </Screen>
+        </View>
+      </Modal>
+    </>
   );
 }
 
 export function AuthScreen({ navigation }) {
+  const [showPassword, setShowPassword] = useState(false);
+
   return (
     <SafeAreaView style={[styles.safeArea, styles.authWrapper]}>
       <StatusBar barStyle="dark-content" backgroundColor={bg} />
-      <View style={styles.authHeader}>
-        <View style={styles.authLogoBox}>
-          <Text style={styles.authLogoText}>O+</Text>
-        </View>
-        <Text style={styles.authTitle}>OkieDoc+</Text>
-        <Text style={styles.authSubtitle}>Your Health Partner</Text>
-      </View>
+      <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+        <ScrollView contentContainerStyle={{ flexGrow: 1, justifyContent: 'center' }} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
+          <View style={styles.authHeader}>
+            <View style={styles.authLogoBox}>
+              <Text style={styles.authLogoText}>O+</Text>
+            </View>
+            <Text style={styles.authTitle}>OkieDoc+</Text>
+            <Text style={styles.authSubtitle}>Your Health Partner</Text>
+          </View>
 
-      <Card style={styles.authCard}>
-        <Text style={styles.largeTitle}>Welcome Back</Text>
-        <Text style={[styles.bodyText, { marginBottom: 20 }]}>
-          Sign in to access your dashboard
-        </Text>
-        
-        <View style={styles.inputGroup}>
-          <Text style={styles.inputLabel}>Email Address</Text>
-          <TextInput style={styles.textInput} placeholder="Enter your email" placeholderTextColor="#94A3B8" autoCapitalize="none" keyboardType="email-address" />
-        </View>
-        
-        <View style={styles.inputGroup}>
-          <Text style={styles.inputLabel}>Password</Text>
-          <TextInput style={styles.textInput} placeholder="Enter your password" placeholderTextColor="#94A3B8" secureTextEntry />
-        </View>
+          <Card style={styles.authCard}>
+            <Text style={styles.largeTitle}>Welcome Back</Text>
+            <Text style={[styles.bodyText, { marginBottom: 20 }]}>
+              Sign in to access your dashboard
+            </Text>
+            
+            <View style={styles.inputGroup}>
+              <Text style={styles.inputLabel}>Email Address</Text>
+              <TextInput style={styles.textInput} placeholder="Enter your email" placeholderTextColor="#94A3B8" autoCapitalize="none" keyboardType="email-address" />
+            </View>
+            
+            <View style={styles.inputGroup}>
+              <Text style={styles.inputLabel}>Password</Text>
+              <View style={{ justifyContent: 'center' }}>
+                <TextInput style={[styles.textInput, { paddingRight: 40 }]} placeholder="Enter your password" placeholderTextColor="#94A3B8" secureTextEntry={!showPassword} />
+                <TouchableOpacity onPress={() => setShowPassword(!showPassword)} style={{ position: 'absolute', right: 14 }}>
+                  <Ionicons name={showPassword ? "eye-off-outline" : "eye-outline"} size={20} color={muted} />
+                </TouchableOpacity>
+              </View>
+              <TouchableOpacity style={{ alignSelf: 'flex-end', marginTop: 8 }}>
+                <Text style={{ color: cyan, fontSize: 12, fontWeight: '700' }}>Forgot Password?</Text>
+              </TouchableOpacity>
+            </View>
 
-        <PrimaryButton
-          label="Sign In"
-          icon="log-in-outline"
-<<<<<<< HEAD
-          onPress={() => navigation.navigate('MainTabs')}
-        />
+            <PrimaryButton
+              label="Sign In"
+              icon="log-in-outline"
+              onPress={() => navigation.navigate('MainTabs')}
+            />
 
-        <TouchableOpacity style={styles.authToggle} onPress={() => navigation.navigate('CreateProfile')}>
-=======
-          onPress={() => navigateRoot(navigation, 'MainTabs')}
-        />
+            <View style={{ flexDirection: 'row', alignItems: 'center', marginVertical: 20 }}>
+              <View style={{ flex: 1, height: 1, backgroundColor: '#E2E8F0' }} />
+              <Text style={{ color: muted, marginHorizontal: 12, fontSize: 11, fontWeight: '700' }}>OR CONTINUE WITH</Text>
+              <View style={{ flex: 1, height: 1, backgroundColor: '#E2E8F0' }} />
+            </View>
 
-        <TouchableOpacity style={styles.authToggle} onPress={() => navigateRoot(navigation, 'CreateProfile')}>
->>>>>>> 867d58274d4ae65dd8e9435f42c2efd4b90eaaa5
-          <Text style={styles.authToggleText}>
-            Don't have an account? <Text style={{ color: cyan, fontWeight: '800' }}>Sign Up</Text>
-          </Text>
-        </TouchableOpacity>
-      </Card>
+            <View style={{ flexDirection: 'row', gap: 12, marginBottom: 16 }}>
+              <TouchableOpacity style={[styles.outlineButton, { flex: 1, flexDirection: 'row', borderColor: '#E2E8F0', backgroundColor: '#FFFFFF' }]}>
+                <Ionicons name="logo-google" size={18} color="#EA4335" style={{ marginRight: 8 }} />
+                <Text style={{ color: ink, fontSize: 13, fontWeight: '700' }}>Google</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={[styles.outlineButton, { flex: 1, flexDirection: 'row', borderColor: '#E2E8F0', backgroundColor: '#FFFFFF' }]}>
+                <Ionicons name="logo-apple" size={18} color={ink} style={{ marginRight: 8 }} />
+                <Text style={{ color: ink, fontSize: 13, fontWeight: '700' }}>Apple</Text>
+              </TouchableOpacity>
+            </View>
+
+            <TouchableOpacity style={{ alignItems: 'center', marginVertical: 8 }} onPress={() => navigation.navigate('MainTabs')}>
+              <Ionicons name="finger-print-outline" size={36} color={cyan} />
+              <Text style={{ color: muted, fontSize: 11, marginTop: 4, fontWeight: '600' }}>Biometric Login</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity style={styles.authToggle} onPress={() => navigation.navigate('CreateProfile')}>
+              <Text style={styles.authToggleText}>
+                Don't have an account? <Text style={{ color: cyan, fontWeight: '800' }}>Sign Up</Text>
+              </Text>
+            </TouchableOpacity>
+          </Card>
+        </ScrollView>
+      </KeyboardAvoidingView>
     </SafeAreaView>
   );
 }
 
 export function CreateProfileScreen({ navigation }) {
+  const [profileImage, setProfileImage] = useState(null);
+  const [dob, setDob] = useState(null);
+  const [showDobPicker, setShowDobPicker] = useState(false);
+  const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [bloodType, setBloodType] = useState('');
+  const [showBloodTypeDropdown, setShowBloodTypeDropdown] = useState(false);
+  const [emergencyRelationship, setEmergencyRelationship] = useState('Parent');
+  const [emergencyEmail, setEmergencyEmail] = useState('');
+  const [firstName, setFirstName] = useState('');
+  const [lastName, setLastName] = useState('');
+  const [email, setEmail] = useState('');
+  const [allergies, setAllergies] = useState('');
+  const [emergencyName, setEmergencyName] = useState('');
+  const [emergencyPhone, setEmergencyPhone] = useState('');
+  const [phone, setPhone] = useState('');
+
+  const handleImagePick = async () => {
+    let result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      allowsEditing: true,
+      aspect: [1, 1],
+      quality: 0.5,
+    });
+    if (!result.canceled) setProfileImage(result.assets[0].uri);
+  };
+
+  const passwordsMatch = password === confirmPassword;
+  const isEmailValid = email === '' || (email.includes('@') && email.includes('.'));
+  const isEmergencyEmailValid = emergencyEmail === '' || (emergencyEmail.includes('@') && emergencyEmail.includes('.'));
+  const isPhoneValid = phone === '' || phone.replace(/\D/g, '').length === 11;
+  const isEmergencyPhoneValid = emergencyPhone === '' || emergencyPhone.replace(/\D/g, '').length === 11;
+
+  const canSubmit = firstName.trim() !== '' && lastName.trim() !== '' && dob !== null && 
+    email.includes('@') && email.includes('.') && 
+    phone.replace(/\D/g, '').length === 11 && 
+    password !== '' && passwordsMatch && 
+    bloodType !== '' && 
+    emergencyName.trim() !== '' && 
+    emergencyPhone.replace(/\D/g, '').length === 11 && 
+    emergencyEmail.includes('@') && emergencyEmail.includes('.');
+
+  const bloodTypes = ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-', 'Unknown'];
+
   return (
     <Screen title="Create Profile" subtitle="Tell us about yourself" icon="person-add-outline" navigation={navigation}>
       <Card>
-        <View style={styles.inputGroup}><Text style={styles.inputLabel}>First Name</Text><TextInput style={styles.textInput} placeholder="e.g. Sarah" placeholderTextColor="#94A3B8" /></View>
-        <View style={styles.inputGroup}><Text style={styles.inputLabel}>Last Name</Text><TextInput style={styles.textInput} placeholder="e.g. Williams" placeholderTextColor="#94A3B8" /></View>
-        <View style={styles.inputGroup}><Text style={styles.inputLabel}>Date of Birth</Text><TextInput style={styles.textInput} placeholder="MM/DD/YYYY" placeholderTextColor="#94A3B8" /></View>
-        <View style={styles.inputGroup}><Text style={styles.inputLabel}>Phone Number</Text><TextInput style={styles.textInput} placeholder="(555) 123-4567" placeholderTextColor="#94A3B8" keyboardType="phone-pad" /></View>
-        <View style={styles.inputGroup}><Text style={styles.inputLabel}>Email Address</Text><TextInput style={styles.textInput} placeholder="e.g. sarah@example.com" placeholderTextColor="#94A3B8" autoCapitalize="none" keyboardType="email-address" /></View>
-        <View style={styles.inputGroup}><Text style={styles.inputLabel}>Password</Text><TextInput style={styles.textInput} placeholder="Create a password" placeholderTextColor="#94A3B8" secureTextEntry /></View>
-        <View style={styles.inputGroup}><Text style={styles.inputLabel}>Confirm Password</Text><TextInput style={styles.textInput} placeholder="Confirm your password" placeholderTextColor="#94A3B8" secureTextEntry /></View>
-        <View style={styles.inputGroup}><Text style={styles.inputLabel}>Blood Type</Text><TextInput style={styles.textInput} placeholder="e.g. O+" placeholderTextColor="#94A3B8" /></View>
-        <View style={styles.inputGroup}><Text style={styles.inputLabel}>Allergies</Text><TextInput style={styles.textInput} placeholder="List any allergies" placeholderTextColor="#94A3B8" /></View>
-        <View style={styles.inputGroup}><Text style={styles.inputLabel}>Emergency Contact</Text><TextInput style={styles.textInput} placeholder="Name and phone number" placeholderTextColor="#94A3B8" /></View>
-<<<<<<< HEAD
-        <PrimaryButton label="Complete Registration" icon="checkmark-circle-outline" onPress={() => navigation.navigate('MainTabs')} />
-=======
-        <PrimaryButton label="Complete Registration" icon="checkmark-circle-outline" onPress={() => navigateRoot(navigation, 'MainTabs')} />
->>>>>>> 867d58274d4ae65dd8e9435f42c2efd4b90eaaa5
+        <View style={{ alignItems: 'center', marginBottom: 20 }}>
+          <TouchableOpacity onPress={handleImagePick} style={{ width: 80, height: 80, borderRadius: 40, backgroundColor: '#E8F6FA', alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: cyan, borderStyle: 'dashed', overflow: 'hidden' }}>
+            {profileImage ? <Image source={{ uri: profileImage }} style={{ width: '100%', height: '100%' }} /> : <Ionicons name="camera-outline" size={28} color={cyan} />}
+          </TouchableOpacity>
+          <Text style={{ color: cyan, fontSize: 12, fontWeight: '700', marginTop: 8 }}>Upload Photo</Text>
+        </View>
+
+        <View style={styles.inputGroup}><Text style={styles.inputLabel}>First Name *</Text><TextInput style={styles.textInput} placeholder="e.g. Sarah" placeholderTextColor="#94A3B8" value={firstName} onChangeText={setFirstName} /></View>
+        <View style={styles.inputGroup}><Text style={styles.inputLabel}>Last Name *</Text><TextInput style={styles.textInput} placeholder="e.g. Williams" placeholderTextColor="#94A3B8" value={lastName} onChangeText={setLastName} /></View>
+        
+        <View style={styles.inputGroup}>
+          <Text style={styles.inputLabel}>Date of Birth *</Text>
+          <TouchableOpacity style={[styles.textInput, { justifyContent: 'center' }]} onPress={() => setShowDobPicker(true)}>
+            <Text style={{ color: dob ? ink : '#94A3B8' }}>{dob ? dob.toLocaleDateString() : 'Select your birthday'}</Text>
+          </TouchableOpacity>
+          {showDobPicker && (
+            <View style={{ alignItems: 'flex-start', marginTop: 8, marginBottom: 8 }}>
+              <DateTimePicker 
+                value={dob || new Date(1990, 0, 1)} 
+                mode="date" 
+                display="default" 
+                onChange={(e, d) => {
+                  if (Platform.OS === 'android') setShowDobPicker(false);
+                  if (d) setDob(d);
+                }} 
+              />
+            </View>
+          )}
+        </View>
+        
+        <View style={styles.inputGroup}>
+          <Text style={styles.inputLabel}>Phone Number *</Text>
+          <TextInput style={[styles.textInput, !isPhoneValid && phone.length > 0 && { borderColor: '#EF4444' }]} placeholder="09XX XXX XXXX" placeholderTextColor="#94A3B8" keyboardType="phone-pad" value={phone} onChangeText={setPhone} maxLength={11} />
+          {(!isPhoneValid && phone.length > 0) && <Text style={{ color: '#EF4444', fontSize: 12, marginTop: 4 }}>Phone number must be 11 digits.</Text>}
+        </View>
+        <View style={styles.inputGroup}>
+          <Text style={styles.inputLabel}>Email Address *</Text>
+          <TextInput style={[styles.textInput, !isEmailValid && email.length > 0 && { borderColor: '#EF4444' }]} placeholder="e.g. sarah@example.com" placeholderTextColor="#94A3B8" autoCapitalize="none" keyboardType="email-address" value={email} onChangeText={setEmail} />
+          {(!isEmailValid && email.length > 0) && <Text style={{ color: '#EF4444', fontSize: 12, marginTop: 4 }}>Please enter a valid email address.</Text>}
+        </View>
+        
+        <View style={styles.inputGroup}>
+          <Text style={styles.inputLabel}>Password *</Text>
+          <View style={{ justifyContent: 'center' }}>
+            <TextInput style={[styles.textInput, { paddingRight: 40 }]} placeholder="Create a password" placeholderTextColor="#94A3B8" secureTextEntry={!showPassword} value={password} onChangeText={setPassword} />
+            <TouchableOpacity onPress={() => setShowPassword(!showPassword)} style={{ position: 'absolute', right: 14 }}>
+              <Ionicons name={showPassword ? "eye-off-outline" : "eye-outline"} size={20} color={muted} />
+            </TouchableOpacity>
+          </View>
+        </View>
+        <View style={styles.inputGroup}>
+          <Text style={styles.inputLabel}>Confirm Password *</Text>
+          <View style={{ justifyContent: 'center' }}>
+            <TextInput style={[styles.textInput, !passwordsMatch && confirmPassword.length > 0 && { borderColor: '#EF4444' }, { paddingRight: 40 }]} placeholder="Confirm your password" placeholderTextColor="#94A3B8" secureTextEntry={!showConfirmPassword} value={confirmPassword} onChangeText={setConfirmPassword} />
+            <TouchableOpacity onPress={() => setShowConfirmPassword(!showConfirmPassword)} style={{ position: 'absolute', right: 14 }}>
+              <Ionicons name={showConfirmPassword ? "eye-off-outline" : "eye-outline"} size={20} color={muted} />
+            </TouchableOpacity>
+          </View>
+          {(!passwordsMatch && confirmPassword.length > 0) && <Text style={{ color: '#EF4444', fontSize: 12, marginTop: 4 }}>Passwords do not match.</Text>}
+        </View>
+        
+        <View style={styles.inputGroup}>
+          <Text style={styles.inputLabel}>Blood Type *</Text>
+          <TouchableOpacity style={[styles.textInput, { justifyContent: 'center' }]} onPress={() => setShowBloodTypeDropdown(!showBloodTypeDropdown)}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', width: '100%' }}>
+              <Text style={{ flex: 1, color: bloodType ? ink : '#94A3B8' }}>{bloodType || 'Select blood type'}</Text>
+              <Ionicons name={showBloodTypeDropdown ? "chevron-up" : "chevron-down"} size={18} color={muted} style={{ position: 'absolute', right: 0 }} />
+            </View>
+          </TouchableOpacity>
+          {showBloodTypeDropdown && (
+            <View style={{ backgroundColor: '#F8FAFC', borderRadius: 8, borderWidth: 1, borderColor: '#E2E8F0', padding: 8, marginTop: 8, maxHeight: 160 }}>
+              <ScrollView nestedScrollEnabled>
+                {bloodTypes.map(type => (
+                  <TouchableOpacity key={type} style={{ paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: '#F1F5F9', alignItems: 'center' }} onPress={() => { setBloodType(type); setShowBloodTypeDropdown(false); }}>
+                    <Text style={{ color: ink, fontSize: 14 }}>{type}</Text>
+                  </TouchableOpacity>
+                ))}
+              </ScrollView>
+            </View>
+          )}
+        </View>
+        <View style={styles.inputGroup}><Text style={styles.inputLabel}>Allergies</Text><TextInput style={styles.textInput} placeholder="List any allergies" placeholderTextColor="#94A3B8" value={allergies} onChangeText={setAllergies} /></View>
+        <Text style={[styles.sectionHeader, { marginTop: 8, paddingHorizontal: 0 }]}>Emergency Contact</Text>
+        <View style={styles.inputGroup}><Text style={styles.inputLabel}>Name of Emergency Contact *</Text><TextInput style={styles.textInput} placeholder="Emergency contact name" placeholderTextColor="#94A3B8" value={emergencyName} onChangeText={setEmergencyName} /></View>
+        <View style={styles.inputGroup}>
+          <Text style={styles.inputLabel}>Relationship to Patient *</Text>
+          <View style={{ flexDirection: 'row', gap: 8 }}>
+            {['Parent', 'Spouse', 'Sibling', 'Other'].map(r => (
+              <TouchableOpacity key={r} style={{ flex: 1, height: 44, borderRadius: 8, borderWidth: 1, borderColor: emergencyRelationship === r ? cyan : '#CBD5E1', backgroundColor: emergencyRelationship === r ? '#E8F6FA' : '#FFFFFF', alignItems: 'center', justifyContent: 'center' }} onPress={() => setEmergencyRelationship(r)}>
+                <Text style={{ color: emergencyRelationship === r ? cyan : ink, fontWeight: '700', fontSize: 12 }} numberOfLines={1} adjustsFontSizeToFit>{r}</Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+        </View>
+        <View style={styles.inputGroup}>
+          <Text style={styles.inputLabel}>Phone Number of Emergency Contact *</Text>
+          <TextInput style={[styles.textInput, !isEmergencyPhoneValid && emergencyPhone.length > 0 && { borderColor: '#EF4444' }]} placeholder="09XX XXX XXXX" placeholderTextColor="#94A3B8" keyboardType="phone-pad" value={emergencyPhone} onChangeText={setEmergencyPhone} maxLength={11} />
+          {(!isEmergencyPhoneValid && emergencyPhone.length > 0) && <Text style={{ color: '#EF4444', fontSize: 12, marginTop: 4 }}>Phone number must be 11 digits.</Text>}
+        </View>
+        <View style={styles.inputGroup}>
+          <Text style={styles.inputLabel}>Email of Emergency Contact *</Text>
+          <TextInput style={[styles.textInput, !isEmergencyEmailValid && { borderColor: '#EF4444' }]} placeholder="Emergency contact email" placeholderTextColor="#94A3B8" autoCapitalize="none" keyboardType="email-address" value={emergencyEmail} onChangeText={setEmergencyEmail} />
+          {!isEmergencyEmailValid && <Text style={{ color: '#EF4444', fontSize: 12, marginTop: 4 }}>Please enter a valid email address.</Text>}
+        </View>
+        <PrimaryButton label="Complete Registration" icon="checkmark-circle-outline" onPress={() => navigation.navigate('MainTabs')} color={canSubmit ? cyan : '#CBD5E1'} disabled={!canSubmit} />
       </Card>
     </Screen>
   );
 }
 
 export function EditProfileScreen({ navigation }) {
+  const [profileImage, setProfileImage] = useState(null);
+  const [gender, setGender] = useState('Female');
+  const [bloodType, setBloodType] = useState('O+');
+  const [showBloodTypeDropdown, setShowBloodTypeDropdown] = useState(false);
+  const [emergencyRelationship, setEmergencyRelationship] = useState('Spouse');
+  const [emergencyEmail, setEmergencyEmail] = useState('john.williams@example.com');
+  const [phone, setPhone] = useState('09123456789');
+  const [firstName, setFirstName] = useState('Sarah');
+  const [lastName, setLastName] = useState('Williams');
+  const [address, setAddress] = useState('Oklahoma City, OK');
+  const [email, setEmail] = useState('sarah@example.com');
+  const [allergies, setAllergies] = useState('None');
+  const [emergencyName, setEmergencyName] = useState('John Williams');
+  const [emergencyPhone, setEmergencyPhone] = useState('09987654321');
+
+  const bloodTypes = ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-', 'Unknown'];
+  const isEmailValid = email === '' || (email.includes('@') && email.includes('.'));
+  const isEmergencyEmailValid = emergencyEmail === '' || (emergencyEmail.includes('@') && emergencyEmail.includes('.'));
+  const isPhoneValid = phone === '' || phone.replace(/\D/g, '').length === 11;
+  const isEmergencyPhoneValid = emergencyPhone === '' || emergencyPhone.replace(/\D/g, '').length === 11;
+
+  const canSubmit = firstName.trim() !== '' && lastName.trim() !== '' && address.trim() !== '' &&
+    email.includes('@') && email.includes('.') && 
+    phone.replace(/\D/g, '').length === 11 && 
+    bloodType !== '' && emergencyName.trim() !== '' && 
+    emergencyPhone.replace(/\D/g, '').length === 11 && 
+    emergencyEmail.includes('@') && emergencyEmail.includes('.');
+
+  const handleImagePick = async () => {
+    let result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      allowsEditing: true,
+      aspect: [1, 1],
+      quality: 0.5,
+    });
+    if (!result.canceled) setProfileImage(result.assets[0].uri);
+  };
+
   return (
     <Screen title="Edit Profile" subtitle="Update your personal details" icon="create-outline" navigation={navigation}>
       <Card>
-        <View style={styles.inputGroup}><Text style={styles.inputLabel}>First Name</Text><TextInput style={styles.textInput} defaultValue="Sarah" placeholderTextColor="#94A3B8" /></View>
-        <View style={styles.inputGroup}><Text style={styles.inputLabel}>Last Name</Text><TextInput style={styles.textInput} defaultValue="Williams" placeholderTextColor="#94A3B8" /></View>
-        <View style={styles.inputGroup}><Text style={styles.inputLabel}>Address</Text><TextInput style={styles.textInput} defaultValue="Oklahoma City, OK" placeholderTextColor="#94A3B8" /></View>
-        <View style={styles.inputGroup}><Text style={styles.inputLabel}>Email</Text><TextInput style={styles.textInput} defaultValue="sarah@example.com" placeholderTextColor="#94A3B8" autoCapitalize="none" keyboardType="email-address" /></View>
-        <View style={styles.inputGroup}><Text style={styles.inputLabel}>Phone Number</Text><TextInput style={styles.textInput} defaultValue="(555) 123-4567" placeholderTextColor="#94A3B8" keyboardType="phone-pad" /></View>
-        <View style={styles.inputGroup}><Text style={styles.inputLabel}>Blood Type</Text><TextInput style={styles.textInput} defaultValue="O+" placeholderTextColor="#94A3B8" /></View>
-        <View style={styles.inputGroup}><Text style={styles.inputLabel}>Allergies</Text><TextInput style={styles.textInput} defaultValue="None" placeholderTextColor="#94A3B8" /></View>
-        <View style={styles.inputGroup}><Text style={styles.inputLabel}>Emergency Contact</Text><TextInput style={styles.textInput} defaultValue="John Williams - (555) 987-6543" placeholderTextColor="#94A3B8" /></View>
-<<<<<<< HEAD
-        <PrimaryButton label="Save Changes" icon="save-outline" onPress={() => navigation.canGoBack() ? navigation.goBack() : navigation.navigate('Profile')} />
-=======
-        <PrimaryButton label="Save Changes" icon="save-outline" onPress={() => navigation.goBack()} />
->>>>>>> 867d58274d4ae65dd8e9435f42c2efd4b90eaaa5
+        <View style={{ alignItems: 'center', marginBottom: 20 }}>
+          <TouchableOpacity onPress={handleImagePick} style={{ width: 80, height: 80, borderRadius: 40, backgroundColor: cyan, alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}>
+            {profileImage ? <Image source={{ uri: profileImage }} style={{ width: '100%', height: '100%' }} /> : <Text style={{ color: '#FFFFFF', fontSize: 28, fontWeight: '900' }}>SW</Text>}
+          </TouchableOpacity>
+          <Text style={{ color: cyan, fontSize: 12, fontWeight: '700', marginTop: 8 }}>Change Photo</Text>
+        </View>
+
+        <View style={styles.inputGroup}><Text style={styles.inputLabel}>First Name *</Text><TextInput style={styles.textInput} value={firstName} onChangeText={setFirstName} placeholderTextColor="#94A3B8" /></View>
+        <View style={styles.inputGroup}><Text style={styles.inputLabel}>Last Name *</Text><TextInput style={styles.textInput} value={lastName} onChangeText={setLastName} placeholderTextColor="#94A3B8" /></View>
+        
+        <View style={styles.inputGroup}>
+          <Text style={styles.inputLabel}>Gender *</Text>
+          <View style={{ flexDirection: 'row', gap: 8 }}>
+            {['Male', 'Female', 'Other'].map(g => (
+              <TouchableOpacity key={g} style={{ flex: 1, height: 44, borderRadius: 8, borderWidth: 1, borderColor: gender === g ? cyan : '#CBD5E1', backgroundColor: gender === g ? '#E8F6FA' : '#FFFFFF', alignItems: 'center', justifyContent: 'center' }} onPress={() => setGender(g)}>
+                <Text style={{ color: gender === g ? cyan : ink, fontWeight: '700', fontSize: 13 }}>{g}</Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+        </View>
+
+        <View style={styles.inputGroup}><Text style={styles.inputLabel}>Address *</Text><TextInput style={styles.textInput} value={address} onChangeText={setAddress} placeholderTextColor="#94A3B8" /></View>
+        <View style={styles.inputGroup}>
+          <Text style={styles.inputLabel}>Email *</Text>
+          <TextInput style={[styles.textInput, !isEmailValid && email.length > 0 && { borderColor: '#EF4444' }]} value={email} onChangeText={setEmail} placeholderTextColor="#94A3B8" autoCapitalize="none" keyboardType="email-address" />
+          {(!isEmailValid && email.length > 0) && <Text style={{ color: '#EF4444', fontSize: 12, marginTop: 4 }}>Please enter a valid email address.</Text>}
+        </View>
+        
+        <View style={styles.inputGroup}>
+          <Text style={styles.inputLabel}>Phone Number *</Text>
+          <TextInput style={[styles.textInput, !isPhoneValid && phone.length > 0 && { borderColor: '#EF4444' }]} placeholder="09XX XXX XXXX" placeholderTextColor="#94A3B8" keyboardType="phone-pad" value={phone} onChangeText={setPhone} maxLength={11} />
+          {(!isPhoneValid && phone.length > 0) && <Text style={{ color: '#EF4444', fontSize: 12, marginTop: 4 }}>Phone number must be 11 digits.</Text>}
+        </View>
+
+        <View style={styles.inputGroup}>
+          <Text style={styles.inputLabel}>Blood Type *</Text>
+          <TouchableOpacity style={[styles.textInput, { justifyContent: 'center' }]} onPress={() => setShowBloodTypeDropdown(!showBloodTypeDropdown)}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', width: '100%' }}>
+              <Text style={{ flex: 1, color: bloodType ? ink : '#94A3B8' }}>{bloodType || 'Select blood type'}</Text>
+              <Ionicons name={showBloodTypeDropdown ? "chevron-up" : "chevron-down"} size={18} color={muted} style={{ position: 'absolute', right: 0 }} />
+            </View>
+          </TouchableOpacity>
+          {showBloodTypeDropdown && (
+            <View style={{ backgroundColor: '#F8FAFC', borderRadius: 8, borderWidth: 1, borderColor: '#E2E8F0', padding: 8, marginTop: 8, maxHeight: 160 }}>
+              <ScrollView nestedScrollEnabled>
+                {bloodTypes.map(type => (
+                  <TouchableOpacity key={type} style={{ paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: '#F1F5F9', alignItems: 'center' }} onPress={() => { setBloodType(type); setShowBloodTypeDropdown(false); }}>
+                    <Text style={{ color: ink, fontSize: 14 }}>{type}</Text>
+                  </TouchableOpacity>
+                ))}
+              </ScrollView>
+            </View>
+          )}
+        </View>
+        <View style={styles.inputGroup}><Text style={styles.inputLabel}>Allergies</Text><TextInput style={styles.textInput} value={allergies} onChangeText={setAllergies} placeholderTextColor="#94A3B8" /></View>
+        <Text style={[styles.sectionHeader, { marginTop: 8, paddingHorizontal: 0 }]}>Emergency Contact</Text>
+        <View style={styles.inputGroup}><Text style={styles.inputLabel}>Name of Emergency Contact *</Text><TextInput style={styles.textInput} value={emergencyName} onChangeText={setEmergencyName} placeholderTextColor="#94A3B8" /></View>
+        <View style={styles.inputGroup}>
+          <Text style={styles.inputLabel}>Relationship to Patient *</Text>
+          <View style={{ flexDirection: 'row', gap: 8 }}>
+            {['Parent', 'Spouse', 'Sibling', 'Other'].map(r => (
+              <TouchableOpacity key={r} style={{ flex: 1, height: 44, borderRadius: 8, borderWidth: 1, borderColor: emergencyRelationship === r ? cyan : '#CBD5E1', backgroundColor: emergencyRelationship === r ? '#E8F6FA' : '#FFFFFF', alignItems: 'center', justifyContent: 'center' }} onPress={() => setEmergencyRelationship(r)}>
+                <Text style={{ color: emergencyRelationship === r ? cyan : ink, fontWeight: '700', fontSize: 12 }} numberOfLines={1} adjustsFontSizeToFit>{r}</Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+        </View>
+        <View style={styles.inputGroup}>
+          <Text style={styles.inputLabel}>Phone Number of Emergency Contact *</Text>
+          <TextInput style={[styles.textInput, !isEmergencyPhoneValid && emergencyPhone.length > 0 && { borderColor: '#EF4444' }]} value={emergencyPhone} onChangeText={setEmergencyPhone} placeholderTextColor="#94A3B8" keyboardType="phone-pad" maxLength={11} />
+          {(!isEmergencyPhoneValid && emergencyPhone.length > 0) && <Text style={{ color: '#EF4444', fontSize: 12, marginTop: 4 }}>Phone number must be 11 digits.</Text>}
+        </View>
+        <View style={styles.inputGroup}>
+          <Text style={styles.inputLabel}>Email of Emergency Contact *</Text>
+          <TextInput style={[styles.textInput, !isEmergencyEmailValid && { borderColor: '#EF4444' }]} placeholder="Emergency contact email" placeholderTextColor="#94A3B8" autoCapitalize="none" keyboardType="email-address" value={emergencyEmail} onChangeText={setEmergencyEmail} />
+          {!isEmergencyEmailValid && <Text style={{ color: '#EF4444', fontSize: 12, marginTop: 4 }}>Please enter a valid email address.</Text>}
+        </View>
+        <PrimaryButton label="Save Changes" icon="save-outline" onPress={() => navigation.canGoBack() ? navigation.goBack() : navigation.navigate('Profile')} color={canSubmit ? cyan : '#CBD5E1'} disabled={!canSubmit} />
       </Card>
     </Screen>
   );
 }
 
 export function ProfileScreen({ navigation }) {
+  const [useBiometrics, setUseBiometrics] = useState(true);
+
   const accountLinks = [
-    ['person-outline', 'Personal Information'],
-    ['medical-outline', 'Medical History'],
-    ['shield-checkmark-outline', 'Insurance Details'],
-    ['card-outline', 'Payment Methods'],
+    { icon: 'person-outline', title: 'Personal Information', route: 'EditProfile' },
+    { icon: 'medical-outline', title: 'Medical History', route: 'MedicalRecords' },
+    { icon: 'shield-checkmark-outline', title: 'Insurance Details' },
+    { icon: 'card-outline', title: 'Payment Methods' },
   ];
 
   const preferenceLinks = [
-    ['notifications-outline', 'Notifications'],
-    ['lock-closed-outline', 'Privacy & Security'],
-    ['globe-outline', 'Language & Region'],
+    { icon: 'notifications-outline', title: 'Notifications' },
+    { icon: 'lock-closed-outline', title: 'Privacy & Security' },
+    { icon: 'globe-outline', title: 'Language & Region' },
   ];
 
   return (
@@ -605,11 +1002,7 @@ export function ProfileScreen({ navigation }) {
           <Pill label="Verified" color="#10B981" />
         </View>
         <View style={{ width: '100%', marginTop: 10 }}>
-<<<<<<< HEAD
           <PrimaryButton label="Edit Profile" icon="create-outline" onPress={() => navigation.navigate('EditProfile')} />
-=======
-          <PrimaryButton label="Edit Profile" icon="create-outline" onPress={() => navigateRoot(navigation, 'EditProfile')} />
->>>>>>> 867d58274d4ae65dd8e9435f42c2efd4b90eaaa5
         </View>
       </Card>
 
@@ -648,11 +1041,11 @@ export function ProfileScreen({ navigation }) {
 
       <Text style={styles.sectionHeader}>Account</Text>
       <Card style={{ padding: 0, overflow: 'hidden' }}>
-        {accountLinks.map(([icon, title], index) => (
-          <React.Fragment key={title}>
-            <TouchableOpacity style={styles.linkRow}>
-              <View style={styles.linkIconBg}><Ionicons name={icon} size={18} color={cyan} /></View>
-              <Text style={styles.linkText}>{title}</Text>
+        {accountLinks.map((link, index) => (
+          <React.Fragment key={link.title}>
+            <TouchableOpacity style={styles.linkRow} onPress={() => link.route && navigation.navigate(link.route)}>
+              <View style={styles.linkIconBg}><Ionicons name={link.icon} size={18} color={cyan} /></View>
+              <Text style={styles.linkText}>{link.title}</Text>
               <Ionicons name="chevron-forward" size={18} color="#CBD5E1" />
             </TouchableOpacity>
             {index < accountLinks.length - 1 && <View style={styles.linkDivider} />}
@@ -662,16 +1055,26 @@ export function ProfileScreen({ navigation }) {
 
       <Text style={styles.sectionHeader}>Preferences</Text>
       <Card style={{ padding: 0, overflow: 'hidden' }}>
-        {preferenceLinks.map(([icon, title], index) => (
-          <React.Fragment key={title}>
+        {preferenceLinks.map((link, index) => (
+          <React.Fragment key={link.title}>
             <TouchableOpacity style={styles.linkRow}>
-              <View style={styles.linkIconBg}><Ionicons name={icon} size={18} color={cyan} /></View>
-              <Text style={styles.linkText}>{title}</Text>
+              <View style={styles.linkIconBg}><Ionicons name={link.icon} size={18} color={cyan} /></View>
+              <Text style={styles.linkText}>{link.title}</Text>
               <Ionicons name="chevron-forward" size={18} color="#CBD5E1" />
             </TouchableOpacity>
-            {index < preferenceLinks.length - 1 && <View style={styles.linkDivider} />}
+            <View style={styles.linkDivider} />
           </React.Fragment>
         ))}
+        <View style={styles.linkRow}>
+          <View style={styles.linkIconBg}><Ionicons name="finger-print-outline" size={18} color={cyan} /></View>
+          <Text style={styles.linkText}>Use Biometric Login</Text>
+          <Switch 
+            value={useBiometrics} 
+            onValueChange={setUseBiometrics} 
+            trackColor={{ false: '#CBD5E1', true: '#BDEAF0' }}
+            thumbColor={useBiometrics ? cyan : '#FFFFFF'}
+          />
+        </View>
       </Card>
 
       <View style={{ marginTop: 24, marginBottom: 20 }}>
@@ -679,18 +1082,13 @@ export function ProfileScreen({ navigation }) {
           label="Log Out" 
           icon="log-out-outline" 
           color="#EF4444" 
-<<<<<<< HEAD
           onPress={() => navigation.navigate('Auth')} 
-=======
-          onPress={() => navigateRoot(navigation, 'Auth')} 
->>>>>>> 867d58274d4ae65dd8e9435f42c2efd4b90eaaa5
         />
       </View>
     </Screen>
   );
 }
 
-<<<<<<< HEAD
 export function ReferralDetailsScreen({ navigation }) {
   return (
     <Screen title="Referral Details" subtitle="Orthopedic surgeon referral" icon="git-branch-outline" navigation={navigation}>
@@ -728,15 +1126,73 @@ export function BookSpecialistScreen({ navigation }) {
   const [hmoId, setHmoId] = useState('');
   const [philhealthNo, setPhilhealthNo] = useState('');
   const [hasReferral, setHasReferral] = useState(null);
+  const [hmoCardImage, setHmoCardImage] = useState(null);
 
   // Step 3: Schedule
   const [selectedDate, setSelectedDate] = useState('');
   const [selectedTime, setSelectedTime] = useState(null);
+  const [currentViewDate, setCurrentViewDate] = useState(new Date());
+  const [showMonthYearPicker, setShowMonthYearPicker] = useState(false);
+  const [pickerYear, setPickerYear] = useState(new Date().getFullYear());
+
+  const handlePrevMonth = () => {
+    setCurrentViewDate(prev => new Date(prev.getFullYear(), prev.getMonth() - 1, 1));
+  };
+  const handleNextMonth = () => {
+    setCurrentViewDate(prev => new Date(prev.getFullYear(), prev.getMonth() + 1, 1));
+  };
+  
+  const monthNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+  const currentMonthName = monthNames[currentViewDate.getMonth()];
+  const currentYear = currentViewDate.getFullYear();
+  const daysInMonth = new Date(currentYear, currentViewDate.getMonth() + 1, 0).getDate();
+  const firstDay = new Date(currentYear, currentViewDate.getMonth(), 1).getDay();
 
   // Step 4: Details
   const [chiefComplaint, setChiefComplaint] = useState('');
   const [selectedSymptoms, setSelectedSymptoms] = useState([]);
   const [additionalNotes, setAdditionalNotes] = useState('');
+
+  // Step 5: Review
+  const [showFullScreenImage, setShowFullScreenImage] = useState(false);
+
+  useEffect(() => {
+    const unsubscribe = navigation.addListener('blur', () => {
+      setStep(0);
+      setSelectedDoctor(null);
+      setPaymentMethod(null);
+      setHmoProvider('Select your HMO Provider');
+      setShowHmoDropdown(false);
+      setHmoId('');
+      setPhilhealthNo('');
+      setHmoCardImage(null);
+      setHasReferral(null);
+      setSelectedDate('');
+      setSelectedTime(null);
+      setCurrentViewDate(new Date());
+      setShowMonthYearPicker(false);
+      setPickerYear(new Date().getFullYear());
+      setChiefComplaint('');
+      setSelectedSymptoms([]);
+      setAdditionalNotes('');
+      setShowFullScreenImage(false);
+    });
+    return unsubscribe;
+  }, [navigation]);
+
+  const pickHmoCard = async () => {
+    // No permissions request is necessary for launching the image library.
+    let result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      allowsEditing: true,
+      aspect: [16, 9],
+      quality: 0.8,
+    });
+
+    if (!result.canceled) {
+      setHmoCardImage(result.assets[0].uri);
+    }
+  };
 
   const doctors = [
     { id: '1', name: 'Dr. Sofia Lim', status: 'Available', specialty: 'Cardiologist', clinic: 'OkieDoc+ Heart Center', location: 'BGC, Taguig City', exp: '20 years experience', price: 'From $75', hmo: true, ph: true, initial: 'SL' },
@@ -898,10 +1354,38 @@ export function BookSpecialistScreen({ navigation }) {
                     </View>
 
                     <Text style={styles.inputLabel}>Upload HMO Card (Optional)</Text>
-                    <TouchableOpacity style={{ height: 80, borderWidth: 1, borderColor: '#CBD5E1', borderStyle: 'dashed', borderRadius: 10, backgroundColor: '#F8FAFC', alignItems: 'center', justifyContent: 'center', marginBottom: 16 }}>
-                      <Ionicons name="cloud-upload-outline" size={24} color="#7C3AED" style={{ marginBottom: 4 }} />
-                      <Text style={{ color: '#7C3AED', fontWeight: '700', fontSize: 13 }}>Click to Upload HMO Card</Text>
-                      <Text style={{ color: muted, fontSize: 11 }}>(PNG, JPG up to 5MB)</Text>
+                    <TouchableOpacity 
+                      style={{ 
+                        height: hmoCardImage ? 150 : 80, 
+                        borderWidth: 1, 
+                        borderColor: '#CBD5E1', 
+                        borderStyle: 'dashed', 
+                        borderRadius: 10, 
+                        backgroundColor: '#F8FAFC', 
+                        alignItems: 'center', 
+                        justifyContent: 'center', 
+                        marginBottom: 16,
+                        overflow: 'hidden'
+                      }}
+                      onPress={pickHmoCard}
+                    >
+                      {hmoCardImage ? (
+                        <>
+                          <Image source={{ uri: hmoCardImage }} style={{ width: '100%', height: '100%' }} resizeMode="cover" />
+                          <TouchableOpacity 
+                            onPress={() => setHmoCardImage(null)} 
+                            style={{ position: 'absolute', top: 8, right: 8, backgroundColor: 'rgba(0,0,0,0.5)', borderRadius: 12, padding: 4 }}
+                          >
+                            <Ionicons name="close" size={16} color="#FFFFFF" />
+                          </TouchableOpacity>
+                        </>
+                      ) : (
+                        <>
+                          <Ionicons name="cloud-upload-outline" size={24} color="#7C3AED" style={{ marginBottom: 4 }} />
+                          <Text style={{ color: '#7C3AED', fontWeight: '700', fontSize: 13 }}>Click to Upload HMO Card</Text>
+                          <Text style={{ color: muted, fontSize: 11 }}>(PNG, JPG up to 5MB)</Text>
+                        </>
+                      )}
                     </TouchableOpacity>
 
                     <View style={{ backgroundColor: '#FFFBEB', padding: 12, borderRadius: 8, borderWidth: 1, borderColor: '#FDE68A', flexDirection: 'row' }}>
@@ -982,9 +1466,12 @@ export function BookSpecialistScreen({ navigation }) {
               <Text style={styles.inputLabel}>Desired Date *</Text>
               <View style={{ borderWidth: 1, borderColor: '#E2E8F0', borderRadius: 12, padding: 12, marginBottom: 16, backgroundColor: '#FFFFFF' }}>
                 <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-                  <TouchableOpacity><Ionicons name="chevron-back" size={20} color={muted} /></TouchableOpacity>
-                  <Text style={{ fontSize: 15, fontWeight: '700', color: ink }}>March 2026</Text>
-                  <TouchableOpacity><Ionicons name="chevron-forward" size={20} color={muted} /></TouchableOpacity>
+                  <TouchableOpacity onPress={handlePrevMonth}><Ionicons name="chevron-back" size={20} color={muted} /></TouchableOpacity>
+                  <TouchableOpacity onPress={() => { setPickerYear(currentViewDate.getFullYear()); setShowMonthYearPicker(true); }} style={{ flexDirection: 'row', alignItems: 'center' }}>
+                    <Text style={{ fontSize: 15, fontWeight: '700', color: ink, marginRight: 4 }}>{currentMonthName} {currentYear}</Text>
+                    <Ionicons name="caret-down" size={14} color={ink} />
+                  </TouchableOpacity>
+                  <TouchableOpacity onPress={handleNextMonth}><Ionicons name="chevron-forward" size={20} color={muted} /></TouchableOpacity>
                 </View>
                 <View style={{ flexDirection: 'row', justifyContent: 'space-around', marginBottom: 8 }}>
                   {['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'].map(day => (
@@ -992,9 +1479,12 @@ export function BookSpecialistScreen({ navigation }) {
                   ))}
                 </View>
                 <View style={{ flexDirection: 'row', flexWrap: 'wrap' }}>
-                  {Array.from({ length: 31 }).map((_, i) => {
+                  {Array.from({ length: firstDay }).map((_, i) => (
+                    <View key={`empty-${i}`} style={{ width: '14.28%', height: 40 }} />
+                  ))}
+                  {Array.from({ length: daysInMonth }).map((_, i) => {
                     const day = i + 1;
-                    const dateStr = `March ${day}, 2026`;
+                    const dateStr = `${currentMonthName} ${day}, ${currentYear}`;
                     const isSelected = selectedDate === dateStr;
                     return (
                       <TouchableOpacity 
@@ -1028,6 +1518,46 @@ export function BookSpecialistScreen({ navigation }) {
                 </>
               )}
             </Card>
+
+            {/* Month/Year Picker Modal */}
+            <Modal visible={showMonthYearPicker} transparent={true} animationType="fade" onRequestClose={() => setShowMonthYearPicker(false)}>
+              <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', alignItems: 'center', padding: 20 }}>
+                <View style={{ backgroundColor: '#FFFFFF', borderRadius: 16, padding: 20, width: '100%', maxWidth: 340, shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.2, shadowRadius: 10, elevation: 5 }}>
+                  <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
+                    <TouchableOpacity onPress={() => setPickerYear(prev => prev - 1)} style={{ padding: 8 }}>
+                      <Ionicons name="chevron-back" size={24} color={ink} />
+                    </TouchableOpacity>
+                    <Text style={{ fontSize: 18, fontWeight: '800', color: ink }}>{pickerYear}</Text>
+                    <TouchableOpacity onPress={() => setPickerYear(prev => prev + 1)} style={{ padding: 8 }}>
+                      <Ionicons name="chevron-forward" size={24} color={ink} />
+                    </TouchableOpacity>
+                  </View>
+                  <View style={{ flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between' }}>
+                    {monthNames.map((month, index) => {
+                      const isSelected = currentViewDate.getMonth() === index && currentViewDate.getFullYear() === pickerYear;
+                      return (
+                        <TouchableOpacity
+                          key={month}
+                          style={{ width: '30%', paddingVertical: 12, alignItems: 'center', borderRadius: 8, backgroundColor: isSelected ? '#7C3AED' : '#F8FAFC', borderWidth: 1, borderColor: isSelected ? '#7C3AED' : '#E2E8F0', marginBottom: 10 }}
+                          onPress={() => {
+                            setCurrentViewDate(new Date(pickerYear, index, 1));
+                            setShowMonthYearPicker(false);
+                          }}
+                        >
+                          <Text style={{ color: isSelected ? '#FFFFFF' : ink, fontWeight: isSelected ? '700' : '500', fontSize: 13 }}>{month.substring(0, 3)}</Text>
+                        </TouchableOpacity>
+                      );
+                    })}
+                  </View>
+                  <TouchableOpacity
+                    style={{ marginTop: 10, paddingVertical: 12, alignItems: 'center', backgroundColor: '#F1F5F9', borderRadius: 8 }}
+                    onPress={() => setShowMonthYearPicker(false)}
+                  >
+                    <Text style={{ color: muted, fontWeight: '700', fontSize: 14 }}>Cancel</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            </Modal>
           </>
         )}
 
@@ -1127,6 +1657,14 @@ export function BookSpecialistScreen({ navigation }) {
                   <>
                     <Text style={[styles.bodyText, { marginTop: 4 }]}><Text style={{ fontWeight: '700', color: ink }}>Provider:</Text> {hmoProvider}</Text>
                     <Text style={styles.bodyText}><Text style={{ fontWeight: '700', color: ink }}>Member ID:</Text> {hmoId}</Text>
+                    {hmoCardImage && (
+                      <View style={{ marginTop: 12 }}>
+                        <Text style={[styles.bodyText, { fontWeight: '700', color: ink, marginBottom: 4 }]}>HMO Card:</Text>
+                        <TouchableOpacity onPress={() => setShowFullScreenImage(true)}>
+                          <Image source={{ uri: hmoCardImage }} style={{ width: '100%', height: 150, borderRadius: 8, borderWidth: 1, borderColor: '#E2E8F0' }} resizeMode="cover" />
+                        </TouchableOpacity>
+                      </View>
+                    )}
                   </>
                 )}
               </View>
@@ -1191,12 +1729,1196 @@ export function BookSpecialistScreen({ navigation }) {
               setShowHmoDropdown(false);
               setHmoId('');
               setPhilhealthNo('');
+              setHmoCardImage(null);
               setHasReferral(null);
               setSelectedDate('');
               setSelectedTime(null);
+              setCurrentViewDate(new Date());
+              setShowMonthYearPicker(false);
+              setPickerYear(new Date().getFullYear());
               setChiefComplaint('');
               setSelectedSymptoms([]);
               setAdditionalNotes('');
+              setShowFullScreenImage(false);
+              
+              navigation.navigate('Appointments', { newAppointment: newAppt });
+            }}
+          >
+            <Text style={{ color: '#FFFFFF', fontSize: 14, fontWeight: '700' }}>Confirm Booking</Text>
+          </TouchableOpacity>
+        )}
+      </View>
+
+      {/* Full Screen Image Modal */}
+      <Modal visible={showFullScreenImage} transparent={true} animationType="fade" onRequestClose={() => setShowFullScreenImage(false)}>
+        <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.9)', justifyContent: 'center', alignItems: 'center' }}>
+          <TouchableOpacity 
+            style={{ position: 'absolute', top: 40, right: 20, zIndex: 1, padding: 8 }}
+            onPress={() => setShowFullScreenImage(false)}
+          >
+            <Ionicons name="close" size={32} color="#FFFFFF" />
+          </TouchableOpacity>
+          <Image source={{ uri: hmoCardImage }} style={{ width: '100%', height: '80%' }} resizeMode="contain" />
+        </View>
+      </Modal>
+    </SafeAreaView>
+  );
+}
+
+export function BookTherapyScreen({ navigation }) {
+  const [step, setStep] = useState(0);
+  const totalSteps = 7;
+  
+  // Step 1: Type
+  const [therapyType, setTherapyType] = useState(null);
+  
+  // Step 2: Therapist
+  const [therapist, setTherapist] = useState(null);
+  
+  // Step 3: Referral
+  const [referralOption, setReferralOption] = useState(null);
+  const [referralDoc, setReferralDoc] = useState(null);
+
+  // Step 4: Schedule
+  const [sessionType, setSessionType] = useState('single');
+  const [numSessions, setNumSessions] = useState(4);
+  const [selectedTherapyDate, setSelectedTherapyDate] = useState('');
+  const [selectedTherapyTime, setSelectedTherapyTime] = useState(null);
+  const [therapyViewDate, setTherapyViewDate] = useState(new Date());
+  const [showTherapyMonthYearPicker, setShowTherapyMonthYearPicker] = useState(false);
+  const [therapyPickerYear, setTherapyPickerYear] = useState(new Date().getFullYear());
+  
+  const handlePrevTherapyMonth = () => setTherapyViewDate(prev => new Date(prev.getFullYear(), prev.getMonth() - 1, 1));
+  const handleNextTherapyMonth = () => setTherapyViewDate(prev => new Date(prev.getFullYear(), prev.getMonth() + 1, 1));
+  
+  const therapyMonthNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+  const currentTherapyMonthName = therapyMonthNames[therapyViewDate.getMonth()];
+  const currentTherapyYear = therapyViewDate.getFullYear();
+  const therapyDaysInMonth = new Date(currentTherapyYear, therapyViewDate.getMonth() + 1, 0).getDate();
+  const therapyFirstDay = new Date(currentTherapyYear, therapyViewDate.getMonth(), 1).getDay();
+  const therapyTimes = ['08:00 AM', '09:00 AM', '10:00 AM', '11:00 AM', '01:00 PM', '02:00 PM', '03:00 PM', '04:00 PM'];
+
+  // Step 5: Details
+  const [therapyComplaint, setTherapyComplaint] = useState('');
+  const [affectedArea, setAffectedArea] = useState('');
+  const [therapyNotes, setTherapyNotes] = useState('');
+
+  // Step 6: Payment
+  const [therapyPayment, setTherapyPayment] = useState(null);
+
+  useEffect(() => {
+    const unsubscribe = navigation.addListener('blur', () => {
+      setStep(0);
+      setTherapyType(null);
+      setTherapist(null);
+      setReferralOption(null);
+      setReferralDoc(null);
+      setSessionType('single');
+      setNumSessions(4);
+      setSelectedTherapyDate('');
+      setSelectedTherapyTime(null);
+      setTherapyViewDate(new Date());
+      setShowTherapyMonthYearPicker(false);
+      setTherapyPickerYear(new Date().getFullYear());
+      setTherapyComplaint('');
+      setAffectedArea('');
+      setTherapyNotes('');
+      setTherapyPayment(null);
+    });
+    return unsubscribe;
+  }, [navigation]);
+
+  const isNextDisabled = 
+    (step === 0 && !therapyType) ||
+    (step === 1 && !therapist) ||
+    (step === 2 && (!referralOption || (referralOption === 'upload' && !referralDoc))) ||
+    (step === 3 && (!selectedTherapyDate || !selectedTherapyTime || (sessionType === 'package' && !numSessions))) ||
+    (step === 4 && (!therapyComplaint.trim() || !affectedArea.trim())) ||
+    (step === 5 && !therapyPayment);
+
+  const pickReferralDoc = async () => {
+    let result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      quality: 0.8,
+    });
+    if (!result.canceled) setReferralDoc(result.assets[0].uri);
+  };
+
+  const therapyTypes = [
+    { id: 'PT', title: 'Physical Therapy', sub: 'Rehabilitation for injuries, pain management, and mobility improvement', time: '45-60 mins' },
+    { id: 'OT', title: 'Occupational Therapy', sub: 'Help with daily activities, fine motor skills, and adaptive strategies', time: '45-60 mins' },
+    { id: 'ST', title: 'Speech Therapy', sub: 'Communication, language, and swallowing disorders treatment', time: '30-45 mins' }
+  ];
+
+  const getTherapistsList = () => {
+    if (therapyType?.id === 'OT') {
+      return [
+        { id: '3', init: 'SL', name: 'OT. Sarah Lim', spec: 'Pediatric Occupational Therapy', exp: '5 years experience', rating: '4.9', avail: 'Mon, Wed, Fri' }
+      ];
+    } else if (therapyType?.id === 'ST') {
+      return [
+        { id: '4', init: 'MT', name: 'ST. Michael Tan', spec: 'Adult Speech Pathology', exp: '7 years experience', rating: '4.7', avail: 'Tue, Thu' }
+      ];
+    }
+    return [
+      { id: '1', init: 'MC', name: 'PT. Maria Cruz', spec: 'Sports Rehabilitation', exp: '8 years experience', rating: '4.9', avail: 'Mon, Wed, Fri' },
+      { id: '2', init: 'JR', name: 'PT. James Reyes', spec: 'Orthopedic Physical Therapy', exp: '6 years experience', rating: '4.8', avail: 'Tue, Thu, Sat' }
+    ];
+  };
+
+  const therapistsList = getTherapistsList();
+
+  const getBasePrice = () => {
+    if (therapyType?.id === 'ST') return 1200; // Shorter duration (30-45 mins)
+    if (therapyType?.id === 'OT') return 1600; // Specialized care
+    return 1500; // Default PT
+  };
+
+  return (
+    <SafeAreaView style={styles.safeArea}>
+      <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
+      <View style={styles.header}>
+        <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
+          <Ionicons name="chevron-back" size={23} color={ink} />
+        </TouchableOpacity>
+        <View style={[styles.headerIcon, { backgroundColor: '#10B981' }]}>
+          <Ionicons name="heart" size={22} color="#FFFFFF" />
+        </View>
+        <View style={styles.headerCopy}>
+          <Text style={styles.headerTitle}>Book Therapy Session</Text>
+          <Text style={styles.headerSubtitle}>Schedule your rehabilitation therapy</Text>
+        </View>
+      </View>
+      
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={[styles.content, { paddingBottom: 100 }]}>
+        
+        {/* Pagination Control */}
+        <Card style={{ paddingVertical: 16, marginBottom: 20 }}>
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between', position: 'relative', paddingHorizontal: 5 }}>
+            <View style={{ position: 'absolute', top: 14, left: 16, right: 16, height: 2, backgroundColor: '#E2E8F0', zIndex: -1 }} />
+            <View style={{ position: 'absolute', top: 14, left: 16, right: 16, height: 2, zIndex: -1 }}>
+              <View style={{ width: `${(step / (totalSteps - 1)) * 100}%`, height: '100%', backgroundColor: '#10B981' }} />
+            </View>
+            
+            {Array.from({ length: totalSteps }).map((_, i) => {
+              const isCompleted = step > i;
+              const isActive = step === i;
+              return (
+                <View key={i} style={{ alignItems: 'center' }}>
+                  <View style={{ width: 28, height: 28, borderRadius: 14, backgroundColor: isCompleted || isActive ? '#10B981' : '#F1F5F9', borderWidth: isCompleted || isActive ? 0 : 1, borderColor: '#CBD5E1', alignItems: 'center', justifyContent: 'center' }}>
+                    {isCompleted ? (
+                      <Ionicons name="checkmark" size={16} color="#FFFFFF" />
+                    ) : (
+                      <Text style={{ color: isActive ? '#FFFFFF' : '#64748B', fontSize: 13, fontWeight: '700' }}>{i + 1}</Text>
+                    )}
+                  </View>
+                </View>
+              );
+            })}
+          </View>
+        </Card>
+
+        {/* STEP 1: TYPE */}
+        {step === 0 && (
+          <>
+            <Text style={styles.sectionHeader}>Select Therapy Type</Text>
+            <Text style={[styles.bodyText, {marginBottom: 16, marginTop: -4, paddingHorizontal: 4}]}>Choose the type of therapy session you need</Text>
+            {therapyTypes.map(type => (
+              <TouchableOpacity 
+                key={type.id} 
+                style={[styles.card, therapyType?.id === type.id && { borderColor: '#10B981', borderWidth: 2, backgroundColor: '#ECFDF5' }]}
+                onPress={() => {
+                  if (therapyType?.id !== type.id) setTherapist(null);
+                  setTherapyType(type);
+                }}
+              >
+                <View style={styles.rowBetween}>
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.cardTitle}>{type.title}</Text>
+                    <Text style={[styles.bodyText, { marginBottom: 12 }]}>{type.sub}</Text>
+                    <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                      <Ionicons name="time-outline" size={16} color={muted} style={{ marginRight: 6 }} />
+                      <Text style={{ color: ink, fontSize: 13, fontWeight: '600' }}>{type.time}</Text>
+                    </View>
+                  </View>
+                  {therapyType?.id === type.id && (
+                    <View style={{ backgroundColor: '#10B981', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6 }}>
+                      <Text style={{ color: '#FFFFFF', fontSize: 11, fontWeight: '800' }}>Selected</Text>
+                    </View>
+                  )}
+                </View>
+              </TouchableOpacity>
+            ))}
+          </>
+        )}
+
+        {/* STEP 2: THERAPIST */}
+        {step === 1 && (
+          <>
+            <Text style={styles.sectionHeader}>Select Your Therapist</Text>
+            <Text style={[styles.bodyText, {marginBottom: 16, marginTop: -4, paddingHorizontal: 4}]}>Choose from our qualified physical therapy professionals</Text>
+            {therapistsList.map(pt => (
+              <TouchableOpacity 
+                key={pt.id} 
+                style={[styles.card, therapist?.id === pt.id && { borderColor: '#10B981', borderWidth: 2, backgroundColor: '#ECFDF5' }]}
+                onPress={() => setTherapist(pt)}
+              >
+                <View style={styles.rowBetween}>
+                  <View style={{ flexDirection: 'row', flex: 1, alignItems: 'center' }}>
+                    <View style={{ width: 44, height: 44, borderRadius: 22, backgroundColor: '#10B981', alignItems: 'center', justifyContent: 'center', marginRight: 12 }}>
+                      <Text style={{ color: '#FFFFFF', fontWeight: '800', fontSize: 16 }}>{pt.init}</Text>
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <Text style={styles.cardTitle}>{pt.name}</Text>
+                      <Text style={[styles.bodyText, { color: '#059669', fontWeight: '700' }]}>{pt.spec}</Text>
+                    </View>
+                  </View>
+                </View>
+                <View style={{ marginTop: 12, paddingTop: 12, borderTopWidth: 1, borderColor: therapist?.id === pt.id ? '#D1FAE5' : '#F1F5F9' }}>
+                  <Text style={styles.bodyText}>{pt.exp}</Text>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 4, marginBottom: 8 }}>
+                    <Ionicons name="star" size={14} color="#F59E0B" />
+                    <Text style={[styles.bodyText, { fontWeight: '700', color: ink, marginLeft: 4 }]}>{pt.rating}</Text>
+                  </View>
+                  <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                    <Ionicons name="calendar-outline" size={14} color={muted} />
+                    <Text style={[styles.bodyText, { marginLeft: 6 }]}>Available: <Text style={{ fontWeight: '600', color: ink }}>{pt.avail}</Text></Text>
+                  </View>
+                </View>
+              </TouchableOpacity>
+            ))}
+          </>
+        )}
+
+        {/* STEP 3: REFERRAL */}
+        {step === 2 && (
+          <>
+            <Text style={styles.sectionHeader}>Referral Information</Text>
+            <Text style={[styles.bodyText, {marginBottom: 16, marginTop: -4, paddingHorizontal: 4}]}>Do you have a doctor's referral for this therapy?</Text>
+
+            <View style={{ backgroundColor: '#FFFBEB', padding: 16, borderRadius: 12, borderWidth: 1, borderColor: '#FDE68A', flexDirection: 'row', marginBottom: 20 }}>
+              <Ionicons name="alert-circle" size={24} color="#D97706" style={{ marginRight: 12 }} />
+              <View style={{ flex: 1 }}>
+                <Text style={{ color: '#92400E', fontWeight: '800', fontSize: 15, marginBottom: 4 }}>Referral Recommended</Text>
+                <Text style={{ color: '#B45309', fontSize: 13, lineHeight: 18 }}>A doctor's referral is recommended for therapy sessions and may be required for insurance coverage.</Text>
+              </View>
+            </View>
+
+            <TouchableOpacity style={{ backgroundColor: '#FFFFFF', padding: 16, marginBottom: 12, borderRadius: 12, borderColor: referralOption === 'none' ? '#10B981' : '#E2E8F0', borderWidth: 2 }} onPress={() => setReferralOption('none')}>
+              <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                  <Ionicons name={referralOption === 'none' ? 'radio-button-on' : 'radio-button-off'} size={24} color={referralOption === 'none' ? '#10B981' : muted} style={{ marginRight: 12 }} />
+                  <Text style={[styles.cardTitle, { marginBottom: 0, flex: 1 }]}>Proceed without referral (Self-book, pay per session)</Text>
+              </View>
+            </TouchableOpacity>
+
+            <TouchableOpacity style={{ backgroundColor: '#FFFFFF', padding: 16, marginBottom: 16, borderRadius: 12, borderColor: referralOption === 'upload' ? '#10B981' : '#E2E8F0', borderWidth: 2 }} onPress={() => setReferralOption('upload')}>
+              <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                  <Ionicons name={referralOption === 'upload' ? 'radio-button-on' : 'radio-button-off'} size={24} color={referralOption === 'upload' ? '#10B981' : muted} style={{ marginRight: 12 }} />
+                  <Text style={[styles.cardTitle, { marginBottom: 0, flex: 1 }]}>Upload referral document</Text>
+              </View>
+            </TouchableOpacity>
+
+            {referralOption === 'upload' && (
+              <TouchableOpacity 
+                style={{ height: referralDoc ? 150 : 80, borderWidth: 1, borderColor: '#CBD5E1', borderStyle: 'dashed', borderRadius: 10, backgroundColor: '#F8FAFC', alignItems: 'center', justifyContent: 'center', marginBottom: 16, overflow: 'hidden' }}
+                onPress={pickReferralDoc}
+              >
+                {referralDoc ? (
+                  <>
+                    <Image source={{ uri: referralDoc }} style={{ width: '100%', height: '100%' }} resizeMode="cover" />
+                    <TouchableOpacity onPress={() => setReferralDoc(null)} style={{ position: 'absolute', top: 8, right: 8, backgroundColor: 'rgba(0,0,0,0.5)', borderRadius: 12, padding: 4 }}>
+                      <Ionicons name="close" size={16} color="#FFFFFF" />
+                    </TouchableOpacity>
+                  </>
+                ) : (
+                  <>
+                    <Ionicons name="cloud-upload-outline" size={24} color="#10B981" style={{ marginBottom: 4 }} />
+                    <Text style={{ color: '#10B981', fontWeight: '700', fontSize: 13 }}>Upload Referral Document</Text>
+                    <Text style={{ color: muted, fontSize: 11 }}>(PDF, JPG, or PNG up to 5MB)</Text>
+                  </>
+                )}
+              </TouchableOpacity>
+            )}
+          </>
+        )}
+        
+        {/* STEP 4: SCHEDULE */}
+        {step === 3 && (
+          <>
+            <Text style={styles.sectionHeader}>Select Schedule</Text>
+            <Text style={[styles.bodyText, {marginBottom: 16, marginTop: -4, paddingHorizontal: 4}]}>Choose your preferred date and time</Text>
+            
+            <Card>
+              <Text style={[styles.inputLabel, { marginBottom: 12 }]}>Session Type</Text>
+              <TouchableOpacity style={{ backgroundColor: '#FFFFFF', padding: 16, marginBottom: 12, borderRadius: 12, borderColor: sessionType === 'single' ? '#10B981' : '#E2E8F0', borderWidth: 2 }} onPress={() => setSessionType('single')}>
+                <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                    <Ionicons name={sessionType === 'single' ? 'radio-button-on' : 'radio-button-off'} size={24} color={sessionType === 'single' ? '#10B981' : muted} style={{ marginRight: 12 }} />
+                    <View style={{ flex: 1 }}>
+                      <Text style={[styles.cardTitle, { marginBottom: 2 }]}>Single Session</Text>
+                      <Text style={styles.bodyText}>Book one session</Text>
+                    </View>
+                </View>
+              </TouchableOpacity>
+
+              <TouchableOpacity style={{ backgroundColor: '#FFFFFF', padding: 16, marginBottom: 16, borderRadius: 12, borderColor: sessionType === 'package' ? '#10B981' : '#E2E8F0', borderWidth: 2 }} onPress={() => setSessionType('package')}>
+                <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                    <Ionicons name={sessionType === 'package' ? 'radio-button-on' : 'radio-button-off'} size={24} color={sessionType === 'package' ? '#10B981' : muted} style={{ marginRight: 12 }} />
+                    <View style={{ flex: 1 }}>
+                      <Text style={[styles.cardTitle, { marginBottom: 2 }]}>Session Package</Text>
+                      <Text style={styles.bodyText}>Book multiple sessions</Text>
+                    </View>
+                </View>
+              </TouchableOpacity>
+
+              {sessionType === 'package' && (
+                <View style={{ marginBottom: 16, padding: 12, backgroundColor: '#F8FAFC', borderRadius: 12, borderWidth: 1, borderColor: '#E2E8F0' }}>
+                  <Text style={[styles.cardTitle, { marginBottom: 8 }]}>Number of Sessions</Text>
+                  <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 8 }}>
+                    {[4, 8, 12, 16].map(num => (
+                      <TouchableOpacity 
+                        key={num} 
+                        style={{ width: '22%', height: 44, borderRadius: 8, borderWidth: 1, borderColor: numSessions === num ? '#10B981' : '#CBD5E1', backgroundColor: numSessions === num ? '#10B981' : '#FFFFFF', alignItems: 'center', justifyContent: 'center' }}
+                        onPress={() => setNumSessions(num)}
+                      >
+                        <Text style={{ color: numSessions === num ? '#FFFFFF' : ink, fontWeight: '700', fontSize: 16 }}>{num}</Text>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                  <Text style={{ color: '#059669', fontSize: 12, fontWeight: '600' }}>Save 10% with session packages</Text>
+                </View>
+              )}
+
+              <Text style={styles.inputLabel}>Select Date *</Text>
+              <View style={{ borderWidth: 1, borderColor: '#E2E8F0', borderRadius: 12, padding: 12, marginBottom: 16, backgroundColor: '#FFFFFF' }}>
+                <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+                  <TouchableOpacity onPress={handlePrevTherapyMonth}><Ionicons name="chevron-back" size={20} color={muted} /></TouchableOpacity>
+                  <TouchableOpacity onPress={() => { setTherapyPickerYear(therapyViewDate.getFullYear()); setShowTherapyMonthYearPicker(true); }} style={{ flexDirection: 'row', alignItems: 'center' }}>
+                    <Text style={{ fontSize: 15, fontWeight: '700', color: ink, marginRight: 4 }}>{currentTherapyMonthName} {currentTherapyYear}</Text>
+                    <Ionicons name="caret-down" size={14} color={ink} />
+                  </TouchableOpacity>
+                  <TouchableOpacity onPress={handleNextTherapyMonth}><Ionicons name="chevron-forward" size={20} color={muted} /></TouchableOpacity>
+                </View>
+                <View style={{ flexDirection: 'row', justifyContent: 'space-around', marginBottom: 8 }}>
+                  {['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'].map(day => (
+                    <Text key={day} style={{ width: 32, textAlign: 'center', color: muted, fontSize: 12, fontWeight: '600' }}>{day}</Text>
+                  ))}
+                </View>
+                <View style={{ flexDirection: 'row', flexWrap: 'wrap' }}>
+                  {Array.from({ length: therapyFirstDay }).map((_, i) => (
+                    <View key={`empty-${i}`} style={{ width: '14.28%', height: 40 }} />
+                  ))}
+                  {Array.from({ length: therapyDaysInMonth }).map((_, i) => {
+                    const day = i + 1;
+                    const dateStr = `${currentTherapyMonthName} ${day}, ${currentTherapyYear}`;
+                    const isSelected = selectedTherapyDate === dateStr;
+                    return (
+                      <TouchableOpacity 
+                        key={day}
+                        style={{ width: '14.28%', height: 40, alignItems: 'center', justifyContent: 'center' }}
+                        onPress={() => setSelectedTherapyDate(dateStr)}
+                      >
+                        <View style={{ width: 32, height: 32, borderRadius: 16, backgroundColor: isSelected ? '#10B981' : 'transparent', alignItems: 'center', justifyContent: 'center' }}>
+                          <Text style={{ color: isSelected ? '#FFFFFF' : ink, fontSize: 14, fontWeight: isSelected ? '700' : '500' }}>{day}</Text>
+                        </View>
+                      </TouchableOpacity>
+                    );
+                  })}
+                </View>
+              </View>
+
+              {selectedTherapyDate?.length > 0 && (
+                <>
+                  <Text style={[styles.cardTitle, { marginTop: 12, marginBottom: 12 }]}>Available Times</Text>
+                  <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 10 }}>
+                    {therapyTimes.map((t, idx) => (
+                      <TouchableOpacity 
+                        key={idx} 
+                        style={{ width: '31%', paddingVertical: 12, borderRadius: 8, borderWidth: 1, borderColor: selectedTherapyTime === t ? '#10B981' : '#E2E8F0', backgroundColor: selectedTherapyTime === t ? '#ECFDF5' : '#F8FAFC', alignItems: 'center' }}
+                        onPress={() => setSelectedTherapyTime(t)}
+                      >
+                        <Text style={{ color: selectedTherapyTime === t ? '#10B981' : ink, fontWeight: '700', fontSize: 12 }}>{t}</Text>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                </>
+              )}
+            </Card>
+
+            {/* Month/Year Picker Modal */}
+            <Modal visible={showTherapyMonthYearPicker} transparent={true} animationType="fade" onRequestClose={() => setShowTherapyMonthYearPicker(false)}>
+              <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', alignItems: 'center', padding: 20 }}>
+                <View style={{ backgroundColor: '#FFFFFF', borderRadius: 16, padding: 20, width: '100%', maxWidth: 340, shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.2, shadowRadius: 10, elevation: 5 }}>
+                  <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
+                    <TouchableOpacity onPress={() => setTherapyPickerYear(prev => prev - 1)} style={{ padding: 8 }}>
+                      <Ionicons name="chevron-back" size={24} color={ink} />
+                    </TouchableOpacity>
+                    <Text style={{ fontSize: 18, fontWeight: '800', color: ink }}>{therapyPickerYear}</Text>
+                    <TouchableOpacity onPress={() => setTherapyPickerYear(prev => prev + 1)} style={{ padding: 8 }}>
+                      <Ionicons name="chevron-forward" size={24} color={ink} />
+                    </TouchableOpacity>
+                  </View>
+                  <View style={{ flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between' }}>
+                    {therapyMonthNames.map((month, index) => {
+                      const isSelected = therapyViewDate.getMonth() === index && therapyViewDate.getFullYear() === therapyPickerYear;
+                      return (
+                        <TouchableOpacity
+                          key={month}
+                          style={{ width: '30%', paddingVertical: 12, alignItems: 'center', borderRadius: 8, backgroundColor: isSelected ? '#10B981' : '#F8FAFC', borderWidth: 1, borderColor: isSelected ? '#10B981' : '#E2E8F0', marginBottom: 10 }}
+                          onPress={() => {
+                            setTherapyViewDate(new Date(therapyPickerYear, index, 1));
+                            setShowTherapyMonthYearPicker(false);
+                          }}
+                        >
+                          <Text style={{ color: isSelected ? '#FFFFFF' : ink, fontWeight: isSelected ? '700' : '500', fontSize: 13 }}>{month.substring(0, 3)}</Text>
+                        </TouchableOpacity>
+                      );
+                    })}
+                  </View>
+                  <TouchableOpacity
+                    style={{ marginTop: 10, paddingVertical: 12, alignItems: 'center', backgroundColor: '#F1F5F9', borderRadius: 8 }}
+                    onPress={() => setShowTherapyMonthYearPicker(false)}
+                  >
+                    <Text style={{ color: muted, fontWeight: '700', fontSize: 14 }}>Cancel</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            </Modal>
+          </>
+        )}
+
+        {/* STEP 5: DETAILS */}
+        {step === 4 && (
+          <>
+            <Text style={styles.sectionHeader}>Session Details</Text>
+            <Text style={[styles.bodyText, {marginBottom: 16, marginTop: -4, paddingHorizontal: 4}]}>Help your therapist prepare for your session</Text>
+            <Card>
+              <View style={styles.inputGroup}>
+                <Text style={styles.inputLabel}>Chief Complaint / Reason for Therapy *</Text>
+                <TextInput 
+                  style={[styles.textInput, { height: 80, paddingTop: 12 }]} 
+                  placeholder="e.g., Lower back pain after lifting heavy objects, difficulty with shoulder mobility..." 
+                  placeholderTextColor="#94A3B8" 
+                  multiline 
+                  value={therapyComplaint}
+                  onChangeText={setTherapyComplaint}
+                />
+              </View>
+
+              <View style={{ marginBottom: 16 }}>
+                <Text style={styles.inputLabel}>Affected Area *</Text>
+                <TextInput 
+                  style={[styles.textInput, { marginBottom: 4 }]} 
+                  placeholder="e.g., Lower back, Right shoulder, Left knee..." 
+                  placeholderTextColor="#94A3B8" 
+                  value={affectedArea}
+                  onChangeText={setAffectedArea}
+                />
+                <Text style={{ fontSize: 11, color: muted }}>Specify the body part or area requiring therapy</Text>
+              </View>
+
+              <View style={[styles.inputGroup, { marginBottom: 0 }]}>
+                <Text style={styles.inputLabel}>Additional Notes (Optional)</Text>
+                <TextInput 
+                  style={[styles.textInput, { height: 80, paddingTop: 12 }]} 
+                  placeholder="Previous injuries, current medications, specific concerns" 
+                  placeholderTextColor="#94A3B8" 
+                  multiline 
+                  value={therapyNotes}
+                  onChangeText={setTherapyNotes}
+                />
+              </View>
+            </Card>
+          </>
+        )}
+
+        {/* STEP 6: PAYMENT */}
+        {step === 5 && (
+          <>
+            <Text style={styles.sectionHeader}>Payment Method</Text>
+            <Text style={[styles.bodyText, {marginBottom: 16, marginTop: -4, paddingHorizontal: 4}]}>Select how you'll pay for your session</Text>
+            
+            <TouchableOpacity style={[styles.card, therapyPayment === 'Cash' && { borderColor: '#10B981', borderWidth: 2, backgroundColor: '#ECFDF5' }]} onPress={() => setTherapyPayment('Cash')}>
+              <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                <Ionicons name={therapyPayment === 'Cash' ? 'radio-button-on' : 'radio-button-off'} size={24} color={therapyPayment === 'Cash' ? '#10B981' : muted} style={{ marginRight: 12 }} />
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.cardTitle}>Cash / Pay per Session</Text>
+                  <Text style={styles.bodyText}>Pay ₱{getBasePrice().toLocaleString()} per session after completion</Text>
+                </View>
+              </View>
+            </TouchableOpacity>
+
+            <TouchableOpacity style={[styles.card, therapyPayment === 'HMO' && { borderColor: '#10B981', borderWidth: 2, backgroundColor: '#ECFDF5' }]} onPress={() => setTherapyPayment('HMO')}>
+              <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                <Ionicons name={therapyPayment === 'HMO' ? 'radio-button-on' : 'radio-button-off'} size={24} color={therapyPayment === 'HMO' ? '#10B981' : muted} style={{ marginRight: 12 }} />
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.cardTitle}>HMO Coverage</Text>
+                  <Text style={styles.bodyText}>Use your health insurance coverage</Text>
+                  <View style={{ backgroundColor: '#FFFBEB', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6, alignSelf: 'flex-start', marginTop: 8 }}>
+                    <Text style={{ color: '#D97706', fontSize: 11, fontWeight: '700' }}>Subject to HMO approval</Text>
+                  </View>
+                </View>
+              </View>
+            </TouchableOpacity>
+
+            <TouchableOpacity 
+              style={[styles.card, therapyPayment === 'PhilHealth' && { borderColor: '#10B981', borderWidth: 2, backgroundColor: '#ECFDF5' }, referralOption === 'none' && { opacity: 0.6 }]} 
+              onPress={() => referralOption !== 'none' && setTherapyPayment('PhilHealth')}
+              disabled={referralOption === 'none'}
+            >
+              <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                <Ionicons name={therapyPayment === 'PhilHealth' ? 'radio-button-on' : 'radio-button-off'} size={24} color={therapyPayment === 'PhilHealth' ? '#10B981' : muted} style={{ marginRight: 12 }} />
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.cardTitle}>PhilHealth</Text>
+                  <Text style={styles.bodyText}>Requires doctor's referral</Text>
+                  {referralOption === 'none' && (
+                    <View style={{ backgroundColor: '#FEF2F2', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6, alignSelf: 'flex-start', marginTop: 8 }}>
+                      <Text style={{ color: '#EF4444', fontSize: 11, fontWeight: '700' }}>Not Available - No referral</Text>
+                    </View>
+                  )}
+                </View>
+              </View>
+            </TouchableOpacity>
+          </>
+        )}
+
+        {/* STEP 7: REVIEW */}
+        {step === 6 && (
+          <>
+            <Text style={styles.sectionHeader}>Review & Confirm</Text>
+            <Text style={[styles.bodyText, {marginBottom: 16, marginTop: -4, paddingHorizontal: 4}]}>Please review your booking details before confirming</Text>
+            
+            <Card>
+              <Text style={styles.detailLabel}>Therapy Type</Text>
+              <Text style={[styles.cardTitle, { marginTop: 4, marginBottom: 2 }]}>{therapyType?.title}</Text>
+              <Text style={[styles.bodyText, { marginBottom: 16 }]}>Duration: {therapyType?.time}</Text>
+
+              <Text style={styles.detailLabel}>Therapist</Text>
+              <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 6, marginBottom: 16 }}>
+                <View style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: '#10B981', alignItems: 'center', justifyContent: 'center', marginRight: 10 }}>
+                  <Text style={{ color: '#FFFFFF', fontWeight: '800', fontSize: 14 }}>{therapist?.init}</Text>
+                </View>
+                <View>
+                  <Text style={styles.cardTitle}>{therapist?.name}</Text>
+                  <Text style={styles.bodyText}>{therapist?.spec} • {therapist?.exp.split(' ')[0]}</Text>
+                </View>
+              </View>
+
+              <Text style={styles.detailLabel}>Schedule</Text>
+              <View style={{ marginTop: 4, marginBottom: 16 }}>
+                <Text style={[styles.bodyText, { color: ink, fontWeight: '600' }]}>{selectedTherapyDate}</Text>
+                <Text style={[styles.bodyText, { color: ink, fontWeight: '600' }]}>{selectedTherapyTime}</Text>
+                <Text style={styles.bodyText}>{sessionType === 'package' ? `${numSessions}-Session Package` : 'Single Session'}</Text>
+              </View>
+
+              <View style={{ borderTopWidth: 1, borderColor: '#F1F5F9', paddingTop: 16, marginBottom: 16 }}>
+                <Text style={styles.detailLabel}>Chief Complaint</Text>
+                <Text style={[styles.bodyText, { color: ink, marginBottom: 12, marginTop: 4 }]}>{therapyComplaint}</Text>
+                
+                <Text style={styles.detailLabel}>Affected Area</Text>
+                <Text style={[styles.bodyText, { color: ink, marginBottom: 12, marginTop: 4 }]}>{affectedArea}</Text>
+
+                <Text style={styles.detailLabel}>Additional Notes</Text>
+                <Text style={[styles.bodyText, { color: ink, marginTop: 4 }]}>{therapyNotes || 'None'}</Text>
+              </View>
+
+              <View style={{ borderTopWidth: 1, borderColor: '#F1F5F9', paddingTop: 16 }}>
+                <Text style={styles.detailLabel}>Payment Method</Text>
+                <Text style={[styles.cardTitle, { marginTop: 4 }]}>
+                  {therapyPayment === 'Cash' ? 'Cash / Pay per Session' : therapyPayment === 'HMO' ? 'HMO Coverage' : 'PhilHealth'}
+                </Text>
+                
+                {therapyPayment === 'Cash' && (
+                  <>
+                    <Text style={{ fontSize: 24, fontWeight: '900', color: ink, marginTop: 8 }}>
+                      ₱{(sessionType === 'package' ? (getBasePrice() * numSessions * 0.9) : getBasePrice()).toLocaleString()}
+                    </Text>
+                    {sessionType === 'package' && (
+                      <Text style={{ color: '#10B981', fontSize: 13, fontWeight: '700', marginTop: 4 }}>10% package discount</Text>
+                    )}
+                  </>
+                )}
+              </View>
+            </Card>
+          </>
+        )}
+
+      </ScrollView>
+
+      {/* Bottom Sticky Navigation */}
+      <View style={{ position: 'absolute', bottom: 0, left: 0, right: 0, paddingHorizontal: 16, paddingVertical: 16, backgroundColor: '#FFFFFF', borderTopWidth: 1, borderTopColor: '#E2E8F0', flexDirection: 'row', justifyContent: 'space-between' }}>
+        <TouchableOpacity 
+          style={{ height: 48, paddingHorizontal: 24, borderRadius: 8, borderWidth: 1, borderColor: '#CBD5E1', alignItems: 'center', justifyContent: 'center', opacity: step === 0 ? 0.4 : 1 }}
+          onPress={() => step > 0 && setStep(step - 1)}
+          disabled={step === 0}
+        >
+          <Text style={{ color: ink, fontSize: 14, fontWeight: '700' }}>Back</Text>
+        </TouchableOpacity>
+        
+        {step < 6 ? (
+          <TouchableOpacity 
+            style={{ height: 48, paddingHorizontal: 32, borderRadius: 8, backgroundColor: isNextDisabled ? '#CBD5E1' : '#10B981', alignItems: 'center', justifyContent: 'center' }}
+            onPress={() => setStep(step + 1)}
+            disabled={isNextDisabled}
+          >
+            <Text style={{ color: '#FFFFFF', fontSize: 14, fontWeight: '700' }}>Continue</Text>
+          </TouchableOpacity>
+        ) : (
+          <TouchableOpacity 
+            style={{ height: 48, paddingHorizontal: 32, borderRadius: 8, backgroundColor: '#10B981', alignItems: 'center', justifyContent: 'center' }}
+            onPress={() => {
+              setStep(0);
+              setTherapyType(null);
+              setTherapist(null);
+              setReferralOption(null);
+              setReferralDoc(null);
+              setSessionType('single');
+              setNumSessions(4);
+              setSelectedTherapyDate('');
+              setSelectedTherapyTime(null);
+              setTherapyViewDate(new Date());
+              setShowTherapyMonthYearPicker(false);
+              setTherapyPickerYear(new Date().getFullYear());
+              setTherapyComplaint('');
+              setAffectedArea('');
+              setTherapyNotes('');
+              setTherapyPayment(null);
+              
+              navigation.navigate('PhysicalTherapy');
+            }}
+          >
+            <Text style={{ color: '#FFFFFF', fontSize: 14, fontWeight: '700' }}>Confirm Booking</Text>
+          </TouchableOpacity>
+        )}
+      </View>
+    </SafeAreaView>
+  );
+}
+
+export function BookPhysicalScreen({ navigation }) {
+  const [step, setStep] = useState(0);
+  const totalSteps = 6;
+  const stepLabels = ['Doctor', 'Facility', 'Date & Time', 'Patient Info', 'Details', 'Review'];
+  
+  // Step 1: Doctor
+  const [searchQuery, setSearchQuery] = useState('');
+  const [selectedDoctor, setSelectedDoctor] = useState(null);
+  
+  // Step 2: Facility
+  const [selectedFacility, setSelectedFacility] = useState(null);
+
+  // Step 3: Date & Time
+  const [selectedDate, setSelectedDate] = useState('');
+  const [selectedTime, setSelectedTime] = useState(null);
+  const [viewDate, setViewDate] = useState(new Date());
+  const [showMonthYearPicker, setShowMonthYearPicker] = useState(false);
+  const [pickerYear, setPickerYear] = useState(new Date().getFullYear());
+  
+  const handlePrevMonth = () => setViewDate(prev => new Date(prev.getFullYear(), prev.getMonth() - 1, 1));
+  const handleNextMonth = () => setViewDate(prev => new Date(prev.getFullYear(), prev.getMonth() + 1, 1));
+  
+  const monthNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+  const currentMonthName = monthNames[viewDate.getMonth()];
+  const currentYear = viewDate.getFullYear();
+  const daysInMonth = new Date(currentYear, viewDate.getMonth() + 1, 0).getDate();
+  const firstDay = new Date(currentYear, viewDate.getMonth(), 1).getDay();
+  const availableTimes = ['09:00 AM', '10:00 AM', '11:00 AM', '01:00 PM', '02:00 PM', '03:30 PM', '04:00 PM'];
+
+  // Step 4: Patient Info
+  const [fullName, setFullName] = useState('');
+  const [age, setAge] = useState('');
+  const [gender, setGender] = useState('Male');
+  const [contactNumber, setContactNumber] = useState('');
+
+  // Step 5: Consultation Details
+  const [chiefComplaint, setChiefComplaint] = useState('');
+  const [selectedSymptoms, setSelectedSymptoms] = useState([]);
+  const [notes, setNotes] = useState('');
+
+  useEffect(() => {
+    const unsubscribe = navigation.addListener('blur', () => {
+      setStep(0);
+      setSearchQuery('');
+      setSelectedDoctor(null);
+      setSelectedFacility(null);
+      setSelectedDate('');
+      setSelectedTime(null);
+      setViewDate(new Date());
+      setShowMonthYearPicker(false);
+      setPickerYear(new Date().getFullYear());
+      setFullName('');
+      setAge('');
+      setGender('Male');
+      setContactNumber('');
+      setChiefComplaint('');
+      setSelectedSymptoms([]);
+      setNotes('');
+    });
+
+    return unsubscribe;
+  }, [navigation]);
+
+  const isNextDisabled = 
+    (step === 0 && !selectedDoctor) ||
+    (step === 1 && !selectedFacility) ||
+    (step === 2 && (!selectedDate || !selectedTime)) ||
+    (step === 3 && (!fullName.trim() || !age.trim() || !contactNumber.trim())) ||
+    (step === 4 && !chiefComplaint.trim());
+
+  const toggleSymptom = (sym) => {
+    if (selectedSymptoms.includes(sym)) {
+      setSelectedSymptoms(selectedSymptoms.filter(s => s !== sym));
+    } else {
+      setSelectedSymptoms([...selectedSymptoms, sym]);
+    }
+  };
+
+  const physicalDoctors = [
+    { id: '1', init: 'MS', name: 'Dr. Maria Santos', status: 'Available', spec: 'General Practitioner', exp: '15 years experience', clinic: 'OkieDoc+ Makati Clinic', location: 'Makati City',
+      facilities: [
+        { id: 'f1', name: 'OkieDoc+ Makati Clinic', address: '123 Ayala Avenue, Makati City', room: 'Room 301', floor: '3rd Floor' },
+        { id: 'f2', name: 'OkieDoc+ Makati Annex', address: '456 Makati Avenue, Makati City', room: 'Room 205', floor: '2nd Floor' }
+      ]
+    },
+    { id: '2', init: 'JR', name: 'Dr. Juan Reyes', status: 'Available', spec: 'Pediatrician', exp: '12 years experience', clinic: 'OkieDoc+ Quezon City Clinic', location: 'Quezon City',
+      facilities: [{ id: 'f3', name: 'OkieDoc+ Quezon City Clinic', address: '789 Commonwealth Ave, Quezon City', room: 'Room 102', floor: '1st Floor' }]
+    },
+    { id: '3', init: 'SL', name: 'Dr. Sofia Lim', status: 'Unavailable', spec: 'Cardiologist', exp: '20 years experience', clinic: 'OkieDoc+ BGC Clinic', location: 'Taguig City', facilities: [] },
+    { id: '4', init: 'CT', name: 'Dr. Carlos Torres', status: 'Available', spec: 'Dermatologist', exp: '10 years experience', clinic: 'OkieDoc+ Ortigas Clinic', location: 'Pasig City',
+      facilities: [{ id: 'f4', name: 'OkieDoc+ Ortigas Clinic', address: '101 Ortigas Ave, Pasig City', room: 'Room 405', floor: '4th Floor' }]
+    },
+    { id: '5', init: 'AC', name: 'Dr. Anna Cruz', status: 'Available', spec: 'Psychiatrist', exp: '18 years experience', clinic: 'OkieDoc+ Manila Clinic', location: 'Manila',
+      facilities: [{ id: 'f5', name: 'OkieDoc+ Manila Clinic', address: '202 Taft Ave, Manila', room: 'Room 201', floor: '2nd Floor' }]
+    },
+    { id: '6', init: 'MG', name: 'Dr. Miguel Garcia', status: 'Available', spec: 'Orthopedic Surgeon', exp: '22 years experience', clinic: 'OkieDoc+ Makati Clinic', location: 'Makati City',
+      facilities: [{ id: 'f6', name: 'OkieDoc+ Makati Clinic', address: '123 Ayala Avenue, Makati City', room: 'Room 305', floor: '3rd Floor' }]
+    },
+  ];
+
+  const filteredDoctors = physicalDoctors.filter(doc => 
+    !searchQuery || 
+    doc.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
+    doc.spec.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
+  const allSymptoms = ['Fever', 'Cough', 'Headache', 'Sore Throat', 'Body Pain', 'Fatigue', 'Nausea', 'Dizziness', 'Chest Pain', 'Shortness of Breath', 'Stomach Pain', 'Loss of Appetite'];
+
+  return (
+    <SafeAreaView style={styles.safeArea}>
+      <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
+      <Header title="Book Physical Consultation" subtitle="Schedule an in-person appointment with our healthcare professionals" icon="calendar-outline" navigation={navigation} />
+      
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={[styles.content, { paddingBottom: 100 }]}>
+        
+        {/* Pagination Control */}
+        <Card style={{ paddingVertical: 16, marginBottom: 20 }}>
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between', position: 'relative' }}>
+            <View style={{ position: 'absolute', top: 12, left: 16, right: 16, height: 2, backgroundColor: '#E2E8F0', zIndex: -1 }} />
+            <View style={{ position: 'absolute', top: 12, left: 16, width: `${(step / (totalSteps - 1)) * 100}%`, height: 2, backgroundColor: cyan, zIndex: -1 }} />
+            
+            {stepLabels.map((label, i) => (
+              <View key={label} style={{ alignItems: 'center', flex: 1 }}>
+                <View style={{ width: 24, height: 24, borderRadius: 12, backgroundColor: step >= i ? cyan : '#F1F5F9', borderWidth: step >= i ? 0 : 1, borderColor: '#CBD5E1', alignItems: 'center', justifyContent: 'center', marginBottom: 6 }}>
+                  <Text style={{ color: step >= i ? '#FFFFFF' : '#64748B', fontSize: 11, fontWeight: '700' }}>{i + 1}</Text>
+                </View>
+                <Text style={{ fontSize: 9, color: step >= i ? cyan : '#64748B', fontWeight: step >= i ? '700' : '500', textAlign: 'center' }}>{label}</Text>
+              </View>
+            ))}
+          </View>
+        </Card>
+
+        {/* STEP 1: DOCTOR */}
+        {step === 0 && (
+          <>
+            <Text style={styles.sectionHeader}>Select Specialty / Doctor</Text>
+            <View style={[styles.searchBox, { marginTop: 4, marginBottom: 16 }]}>
+              <Ionicons name="search-outline" size={18} color={muted} />
+              <TextInput 
+                style={styles.searchInput} 
+                placeholder="Search doctors or specialties..." 
+                placeholderTextColor="#94A3B8" 
+                value={searchQuery}
+                onChangeText={setSearchQuery}
+              />
+            </View>
+
+          {filteredDoctors.map(doc => {
+            const isSelected = selectedDoctor?.id === doc.id;
+            return (
+              <AnimatedSelectionCard 
+                key={doc.id} 
+                isSelected={isSelected}
+                disabled={doc.status === 'Unavailable'}
+                disabledStyle={{ opacity: 0.6 }}
+                onPress={() => {
+                  if (doc.status === 'Available') {
+                    if (selectedDoctor?.id !== doc.id) setSelectedFacility(null);
+                    setSelectedDoctor(doc);
+                  }
+                }}
+              >
+                <View style={styles.rowBetween}>
+                  <View style={{ flexDirection: 'row', flex: 1, alignItems: 'center' }}>
+                    <View style={{ width: 44, height: 44, borderRadius: 22, backgroundColor: cyan, alignItems: 'center', justifyContent: 'center', marginRight: 12 }}>
+                      <Text style={{ color: '#FFFFFF', fontWeight: '800', fontSize: 16 }}>{doc.init}</Text>
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <Text style={styles.cardTitle}>{doc.name}</Text>
+                      <Text style={[styles.bodyText, { color: cyan, fontWeight: '700' }]}>{doc.spec}</Text>
+                    </View>
+                  </View>
+                  <Pill label={doc.status} color={doc.status === 'Available' ? '#10B981' : '#64748B'} />
+                </View>
+                <View style={{ marginTop: 12, paddingTop: 12, borderTopWidth: 1, borderColor: isSelected ? '#D8EAF0' : '#F1F5F9' }}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 4 }}>
+                    <Ionicons name="business-outline" size={14} color={muted} style={{ marginRight: 6 }} />
+                    <Text style={[styles.bodyText, { fontWeight: '600', color: ink }]}>{doc.clinic}</Text>
+                  </View>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 4 }}>
+                    <Ionicons name="location-outline" size={14} color={muted} style={{ marginRight: 6 }} />
+                    <Text style={styles.bodyText}>{doc.location}</Text>
+                  </View>
+                  <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                    <MaterialCommunityIcons name="stethoscope" size={14} color={muted} style={{ marginRight: 6 }} />
+                    <Text style={styles.bodyText}>{doc.exp}</Text>
+                  </View>
+                </View>
+              </AnimatedSelectionCard>
+            );
+          })}
+          </>
+        )}
+
+        {/* STEP 2: FACILITY */}
+        {step === 1 && (
+          <>
+            <Text style={styles.sectionHeader}>Select Facility / Location</Text>
+            <Text style={[styles.bodyText, {marginBottom: 16, marginTop: -4, paddingHorizontal: 4}]}>Available locations for {selectedDoctor?.name}</Text>
+          {selectedDoctor?.facilities.map(fac => {
+            const isSelected = selectedFacility?.id === fac.id;
+            return (
+              <AnimatedSelectionCard 
+                key={fac.id} 
+                isSelected={isSelected}
+                onPress={() => setSelectedFacility(fac)}
+              >
+                <View style={styles.rowBetween}>
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.cardTitle}>{fac.name}</Text>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 6, marginBottom: 4 }}>
+                      <Ionicons name="location-outline" size={14} color={muted} style={{ marginRight: 6 }} />
+                      <Text style={styles.bodyText}>{fac.address}</Text>
+                    </View>
+                    <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                      <Ionicons name="business-outline" size={14} color={muted} style={{ marginRight: 6 }} />
+                      <Text style={{ color: ink, fontSize: 13, fontWeight: '600' }}>{fac.room}</Text>
+                      <Text style={{ color: muted, fontSize: 13, marginHorizontal: 6 }}>•</Text>
+                      <Text style={{ color: muted, fontSize: 13 }}>{fac.floor}</Text>
+                    </View>
+                  </View>
+                  {isSelected && (
+                    <Ionicons name="checkmark-circle" size={24} color={cyan} />
+                  )}
+                </View>
+              </AnimatedSelectionCard>
+            );
+          })}
+          </>
+        )}
+
+        {/* STEP 3: SCHEDULE */}
+        {step === 2 && (
+          <>
+            <Text style={styles.sectionHeader}>Select Date & Time</Text>
+            <Card>
+              <Text style={styles.inputLabel}>Desired Date *</Text>
+              <View style={{ borderWidth: 1, borderColor: '#E2E8F0', borderRadius: 12, padding: 12, marginBottom: 16, backgroundColor: '#FFFFFF' }}>
+                <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+                  <TouchableOpacity onPress={handlePrevMonth}><Ionicons name="chevron-back" size={20} color={muted} /></TouchableOpacity>
+                  <TouchableOpacity onPress={() => { setPickerYear(viewDate.getFullYear()); setShowMonthYearPicker(true); }} style={{ flexDirection: 'row', alignItems: 'center' }}>
+                    <Text style={{ fontSize: 15, fontWeight: '700', color: ink, marginRight: 4 }}>{currentMonthName} {currentYear}</Text>
+                    <Ionicons name="caret-down" size={14} color={ink} />
+                  </TouchableOpacity>
+                  <TouchableOpacity onPress={handleNextMonth}><Ionicons name="chevron-forward" size={20} color={muted} /></TouchableOpacity>
+                </View>
+                <View style={{ flexDirection: 'row', justifyContent: 'space-around', marginBottom: 8 }}>
+                  {['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'].map(day => (
+                    <Text key={day} style={{ width: 32, textAlign: 'center', color: muted, fontSize: 12, fontWeight: '600' }}>{day}</Text>
+                  ))}
+                </View>
+                <View style={{ flexDirection: 'row', flexWrap: 'wrap' }}>
+                  {Array.from({ length: firstDay }).map((_, i) => (
+                    <View key={`empty-${i}`} style={{ width: '14.28%', height: 40 }} />
+                  ))}
+                  {Array.from({ length: daysInMonth }).map((_, i) => {
+                    const day = i + 1;
+                    const dateStr = `${currentMonthName} ${day}, ${currentYear}`;
+                    const isSelected = selectedDate === dateStr;
+                    return (
+                      <TouchableOpacity 
+                        key={day}
+                        style={{ width: '14.28%', height: 40, alignItems: 'center', justifyContent: 'center' }}
+                        onPress={() => setSelectedDate(dateStr)}
+                      >
+                        <View style={{ width: 32, height: 32, borderRadius: 16, backgroundColor: isSelected ? cyan : 'transparent', alignItems: 'center', justifyContent: 'center' }}>
+                          <Text style={{ color: isSelected ? '#FFFFFF' : ink, fontSize: 14, fontWeight: isSelected ? '700' : '500' }}>{day}</Text>
+                        </View>
+                      </TouchableOpacity>
+                    );
+                  })}
+                </View>
+              </View>
+
+              {selectedDate?.length > 0 && (
+                <>
+                  <Text style={[styles.cardTitle, { marginTop: 12, marginBottom: 12 }]}>Available Times</Text>
+                  <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 10 }}>
+                    {availableTimes.map((t, idx) => (
+                      <TouchableOpacity 
+                        key={idx} 
+                        style={{ width: '31%', paddingVertical: 12, borderRadius: 8, borderWidth: 1, borderColor: selectedTime === t ? cyan : '#E2E8F0', backgroundColor: selectedTime === t ? '#E8F6FA' : '#F8FAFC', alignItems: 'center' }}
+                        onPress={() => setSelectedTime(t)}
+                      >
+                        <Text style={{ color: selectedTime === t ? cyan : ink, fontWeight: '700', fontSize: 12 }}>{t}</Text>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                </>
+              )}
+            </Card>
+
+            <Modal visible={showMonthYearPicker} transparent={true} animationType="fade" onRequestClose={() => setShowMonthYearPicker(false)}>
+              <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', alignItems: 'center', padding: 20 }}>
+                <View style={{ backgroundColor: '#FFFFFF', borderRadius: 16, padding: 20, width: '100%', maxWidth: 340, shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.2, shadowRadius: 10, elevation: 5 }}>
+                  <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
+                    <TouchableOpacity onPress={() => setPickerYear(prev => prev - 1)} style={{ padding: 8 }}>
+                      <Ionicons name="chevron-back" size={24} color={ink} />
+                    </TouchableOpacity>
+                    <Text style={{ fontSize: 18, fontWeight: '800', color: ink }}>{pickerYear}</Text>
+                    <TouchableOpacity onPress={() => setPickerYear(prev => prev + 1)} style={{ padding: 8 }}>
+                      <Ionicons name="chevron-forward" size={24} color={ink} />
+                    </TouchableOpacity>
+                  </View>
+                  <View style={{ flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between' }}>
+                    {monthNames.map((month, index) => {
+                      const isSelected = viewDate.getMonth() === index && viewDate.getFullYear() === pickerYear;
+                      return (
+                        <TouchableOpacity
+                          key={month}
+                          style={{ width: '30%', paddingVertical: 12, alignItems: 'center', borderRadius: 8, backgroundColor: isSelected ? cyan : '#F8FAFC', borderWidth: 1, borderColor: isSelected ? cyan : '#E2E8F0', marginBottom: 10 }}
+                          onPress={() => {
+                            setViewDate(new Date(pickerYear, index, 1));
+                            setShowMonthYearPicker(false);
+                          }}
+                        >
+                          <Text style={{ color: isSelected ? '#FFFFFF' : ink, fontWeight: isSelected ? '700' : '500', fontSize: 13 }}>{month.substring(0, 3)}</Text>
+                        </TouchableOpacity>
+                      );
+                    })}
+                  </View>
+                  <TouchableOpacity
+                    style={{ marginTop: 10, paddingVertical: 12, alignItems: 'center', backgroundColor: '#F1F5F9', borderRadius: 8 }}
+                    onPress={() => setShowMonthYearPicker(false)}
+                  >
+                    <Text style={{ color: muted, fontWeight: '700', fontSize: 14 }}>Cancel</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            </Modal>
+          </>
+        )}
+
+        {/* STEP 4: PATIENT INFO */}
+        {step === 3 && (
+          <>
+            <Text style={styles.sectionHeader}>Patient Details</Text>
+            <Text style={[styles.bodyText, {marginBottom: 16, marginTop: -4, paddingHorizontal: 4}]}>Auto-filled from your profile</Text>
+            <Card>
+              <View style={styles.inputGroup}>
+                <Text style={styles.inputLabel}>Full name *</Text>
+                <TextInput style={styles.textInput} placeholder="Enter full name" placeholderTextColor="#94A3B8" value={fullName} onChangeText={setFullName} />
+              </View>
+              <View style={styles.inputGroup}>
+                <Text style={styles.inputLabel}>Age *</Text>
+                <TextInput style={styles.textInput} placeholder="Enter age" placeholderTextColor="#94A3B8" keyboardType="numeric" value={age} onChangeText={setAge} />
+              </View>
+              <View style={styles.inputGroup}>
+                <Text style={styles.inputLabel}>Gender *</Text>
+                <View style={{ flexDirection: 'row', gap: 8 }}>
+                  {['Male', 'Female', 'Other'].map(g => (
+                    <TouchableOpacity key={g} style={{ flex: 1, height: 44, borderRadius: 8, borderWidth: 1, borderColor: gender === g ? cyan : '#CBD5E1', backgroundColor: gender === g ? '#E8F6FA' : '#FFFFFF', alignItems: 'center', justifyContent: 'center' }} onPress={() => setGender(g)}>
+                      <Text style={{ color: gender === g ? cyan : ink, fontWeight: '700', fontSize: 13 }}>{g}</Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              </View>
+              <View style={[styles.inputGroup, { marginBottom: 0 }]}>
+                <Text style={styles.inputLabel}>Contact Number *</Text>
+                <TextInput style={styles.textInput} placeholder="+63 XXX XXX XXXX" placeholderTextColor="#94A3B8" keyboardType="phone-pad" value={contactNumber} onChangeText={setContactNumber} />
+              </View>
+            </Card>
+          </>
+        )}
+
+        {/* STEP 5: DETAILS */}
+        {step === 4 && (
+          <>
+            <Text style={styles.sectionHeader}>Consultation Details</Text>
+            <Card>
+              <View style={styles.inputGroup}>
+                <Text style={styles.inputLabel}>Chief Complaint *</Text>
+                <TextInput 
+                  style={[styles.textInput, { height: 80, paddingTop: 12 }]} 
+                  placeholder="What brings you in today?" 
+                  placeholderTextColor="#94A3B8" 
+                  multiline 
+                  value={chiefComplaint}
+                  onChangeText={setChiefComplaint}
+                />
+              </View>
+
+              <Text style={styles.inputLabel}>Symptoms (Select all that apply)</Text>
+              <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 16 }}>
+                {allSymptoms.map((sym, idx) => (
+                  <TouchableOpacity 
+                    key={idx} 
+                    style={{ paddingHorizontal: 12, paddingVertical: 8, borderRadius: 16, borderWidth: 1, borderColor: selectedSymptoms.includes(sym) ? cyan : '#E2E8F0', backgroundColor: selectedSymptoms.includes(sym) ? cyan : '#F8FAFC' }}
+                    onPress={() => toggleSymptom(sym)}
+                  >
+                    <Text style={{ color: selectedSymptoms.includes(sym) ? '#FFFFFF' : muted, fontSize: 12, fontWeight: '600' }}>{sym}</Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+
+              <View style={[styles.inputGroup, { marginBottom: 0 }]}>
+                <Text style={styles.inputLabel}>Additional Notes (Optional)</Text>
+                <TextInput 
+                  style={[styles.textInput, { height: 80, paddingTop: 12 }]} 
+                  placeholder="Any additional information you'd like the doctor to know" 
+                  placeholderTextColor="#94A3B8" 
+                  multiline 
+                  value={notes}
+                  onChangeText={setNotes}
+                />
+              </View>
+            </Card>
+          </>
+        )}
+
+        {/* STEP 6: REVIEW */}
+        {step === 5 && (
+          <>
+            <Text style={styles.sectionHeader}>Review Your Appointment</Text>
+            <Card>
+              <Text style={styles.detailLabel}>Doctor</Text>
+              <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 4, marginBottom: 16 }}>
+                <View style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: cyan, alignItems: 'center', justifyContent: 'center', marginRight: 10 }}>
+                  <Text style={{ color: '#FFFFFF', fontWeight: '800', fontSize: 14 }}>{selectedDoctor?.init}</Text>
+                </View>
+                <View>
+                  <Text style={styles.cardTitle}>{selectedDoctor?.name}</Text>
+                  <Text style={styles.bodyText}>{selectedDoctor?.spec}</Text>
+                </View>
+              </View>
+
+              <Text style={styles.detailLabel}>Location</Text>
+              <View style={{ marginTop: 4, marginBottom: 16 }}>
+                <Text style={[styles.bodyText, { color: ink, fontWeight: '700' }]}>{selectedFacility?.name}</Text>
+                <Text style={[styles.bodyText, { color: ink }]}>{selectedFacility?.address}</Text>
+                <Text style={[styles.bodyText, { color: ink }]}>{selectedFacility?.room} • {selectedFacility?.floor}</Text>
+              </View>
+
+              <View style={styles.rowBetween}>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.detailLabel}>Date</Text>
+                  <Text style={[styles.bodyText, { color: ink, marginTop: 4 }]}>{selectedDate}</Text>
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.detailLabel}>Time</Text>
+                  <Text style={[styles.bodyText, { color: ink, marginTop: 4 }]}>{selectedTime}</Text>
+                </View>
+              </View>
+
+              <View style={{ marginTop: 16, borderTopWidth: 1, borderColor: '#F1F5F9', paddingTop: 16, marginBottom: 16 }}>
+                <Text style={styles.detailLabel}>Patient</Text>
+                <Text style={[styles.bodyText, { color: ink, marginTop: 4, fontWeight: '600' }]}>{fullName}</Text>
+                <Text style={[styles.bodyText, { color: ink }]}>{age} years old • {gender}</Text>
+                <Text style={[styles.bodyText, { color: ink }]}>{contactNumber}</Text>
+              </View>
+
+              <View style={{ borderTopWidth: 1, borderColor: '#F1F5F9', paddingTop: 16, marginBottom: 16 }}>
+                <Text style={styles.detailLabel}>Chief Complaint</Text>
+                <Text style={[styles.bodyText, { color: ink, marginBottom: 12, marginTop: 4 }]}>{chiefComplaint}</Text>
+                
+                <Text style={styles.detailLabel}>Symptoms</Text>
+                <Text style={[styles.bodyText, { color: ink, marginBottom: 12, marginTop: 4 }]}>{selectedSymptoms.length > 0 ? selectedSymptoms.join(', ') : 'None'}</Text>
+
+                <Text style={styles.detailLabel}>Additional Notes</Text>
+                <Text style={[styles.bodyText, { color: ink, marginTop: 4 }]}>{notes || 'None'}</Text>
+              </View>
+
+              <View style={{ backgroundColor: '#F0FDF4', padding: 16, borderRadius: 12, borderWidth: 1, borderColor: '#BBF7D0' }}>
+                <Text style={{ color: '#166534', fontWeight: '800', fontSize: 15, marginBottom: 8 }}>Important Reminders</Text>
+                <Text style={{ color: '#15803D', fontSize: 13, marginBottom: 4 }}>• Please arrive 15 minutes before your appointment</Text>
+                <Text style={{ color: '#15803D', fontSize: 13, marginBottom: 4 }}>• Bring a valid ID and PhilHealth card (if applicable)</Text>
+                <Text style={{ color: '#15803D', fontSize: 13, marginBottom: 4 }}>• Wear a face mask inside the clinic</Text>
+                <Text style={{ color: '#15803D', fontSize: 13 }}>• You will receive a confirmation SMS with appointment details</Text>
+              </View>
+            </Card>
+          </>
+        )}
+
+      </ScrollView>
+
+      {/* Bottom Sticky Navigation */}
+      <View style={{ position: 'absolute', bottom: 0, left: 0, right: 0, paddingHorizontal: 16, paddingVertical: 16, backgroundColor: '#FFFFFF', borderTopWidth: 1, borderTopColor: '#E2E8F0', flexDirection: 'row', justifyContent: 'space-between' }}>
+        <TouchableOpacity 
+          style={{ height: 48, paddingHorizontal: 24, borderRadius: 8, borderWidth: 1, borderColor: '#CBD5E1', alignItems: 'center', justifyContent: 'center', opacity: step === 0 ? 0.4 : 1 }}
+          onPress={() => step > 0 && setStep(step - 1)}
+          disabled={step === 0}
+        >
+          <Text style={{ color: ink, fontSize: 14, fontWeight: '700' }}>Back</Text>
+        </TouchableOpacity>
+        
+        {step < 5 ? (
+          <TouchableOpacity 
+            style={{ height: 48, paddingHorizontal: 32, borderRadius: 8, backgroundColor: isNextDisabled ? '#CBD5E1' : cyan, alignItems: 'center', justifyContent: 'center' }}
+            onPress={() => setStep(step + 1)}
+            disabled={isNextDisabled}
+          >
+            <Text style={{ color: '#FFFFFF', fontSize: 14, fontWeight: '700' }}>Next</Text>
+          </TouchableOpacity>
+        ) : (
+          <TouchableOpacity 
+            style={{ height: 48, paddingHorizontal: 32, borderRadius: 8, backgroundColor: cyan, alignItems: 'center', justifyContent: 'center' }}
+            onPress={() => {
+              const newAppt = {
+                id: Date.now().toString(),
+                doctor: selectedDoctor?.name,
+                specialty: selectedDoctor?.spec,
+                status: 'Confirmed',
+                date: selectedDate,
+                time: selectedTime,
+                type: 'Clinic Visit',
+                color: '#089FB4',
+                actions: ['Message']
+              };
+              
+              setStep(0);
+              setSearchQuery('');
+              setSelectedDoctor(null);
+              setSelectedFacility(null);
+              setSelectedDate('');
+              setSelectedTime(null);
+              setViewDate(new Date());
+              setShowMonthYearPicker(false);
+              setPickerYear(new Date().getFullYear());
+              setFullName('');
+              setAge('');
+              setGender('Male');
+              setContactNumber('');
+              setChiefComplaint('');
+              setSelectedSymptoms([]);
+              setNotes('');
               
               navigation.navigate('Appointments', { newAppointment: newAppt });
             }}
@@ -1206,47 +2928,231 @@ export function BookSpecialistScreen({ navigation }) {
         )}
       </View>
     </SafeAreaView>
-=======
-export function MedicalRecordsScreen({ navigation }) {
-  const records = [
-    ['Lab Results', 'Complete blood count uploaded', 'March 15, 2026', 'New', '#8B5CF6'],
-    ['Visit Summary', 'Family medicine consultation', 'March 8, 2026', 'Reviewed', '#089FB4'],
-    ['Imaging', 'Right knee X-ray report', 'February 21, 2026', 'Available', '#10B981'],
-    ['Immunization', 'Flu vaccine record', 'January 12, 2026', 'Complete', '#089FB4'],
-  ];
-
-  return (
-    <Screen title="Medical Records" subtitle="View health history and files" icon="folder-open-outline" navigation={navigation}>
-      <View style={styles.searchBox}>
-        <Ionicons name="search-outline" size={18} color={muted} />
-        <TextInput style={styles.searchInput} placeholder="Search records" placeholderTextColor="#94A3B8" />
-      </View>
-      {records.map(([title, detail, date, status, color]) => (
-        <Card key={title}>
-          <View style={styles.rowBetween}>
-            <View style={styles.recordIcon}>
-              <Ionicons name="document-text-outline" size={22} color={color} />
-            </View>
-            <Pill label={status} color={color} />
-          </View>
-          <Text style={styles.cardTitle}>{title}</Text>
-          <Text style={styles.bodyText}>{detail}</Text>
-          <View style={styles.metaRow}>
-            <Ionicons name="calendar-outline" size={15} color={muted} />
-            <Text style={styles.metaText}>{date}</Text>
-          </View>
-        </Card>
-      ))}
-    </Screen>
->>>>>>> 867d58274d4ae65dd8e9435f42c2efd4b90eaaa5
   );
 }
 
-export function MessagesScreen({ navigation }) {
-<<<<<<< HEAD
+export function ConsultationIntakeScreen({ navigation, route }) {
+  const consultationType = route.params?.type || 'Consultation';
+  const [mainConcern, setMainConcern] = useState('');
+  const [selectedSymptoms, setSelectedSymptoms] = useState([]);
+  const [otherSymptoms, setOtherSymptoms] = useState('');
+  const [bodyView, setBodyView] = useState('Front');
+  const [selectedBodyParts, setSelectedBodyParts] = useState([]);
+  const [duration, setDuration] = useState('');
+  const [painLevel, setPainLevel] = useState(0);
+  const [attachments, setAttachments] = useState([]);
+
+  const commonSymptoms = [
+    'Fever', 'Headache', 'Cough', 'Body Pain', 'Dizziness', 'Chest Pain', 
+    'Sore Throat', 'Nausea', 'Fatigue', 'Shortness of Breath', 'Stomach Pain', 'Loss of Appetite'
+  ];
+
+  const frontBodyParts = [
+    { id: 'Head', isCircle: true, cx: 100, cy: 30, r: 22 },
+    { id: 'Neck', isRect: true, x: 90, y: 55, w: 20, h: 15 },
+    { id: 'Chest', isRect: true, x: 60, y: 73, w: 80, h: 45, rx: 10 },
+    { id: 'Abdomen', isRect: true, x: 65, y: 121, w: 70, h: 50, rx: 10 },
+    { id: 'Pelvis', isRect: true, x: 65, y: 174, w: 70, h: 30, rx: 10 },
+    { id: 'Right Arm', isRect: true, x: 30, y: 73, w: 25, h: 100, rx: 12 }, // visual left
+    { id: 'Left Arm', isRect: true, x: 145, y: 73, w: 25, h: 100, rx: 12 },  // visual right
+    { id: 'Right Leg', isRect: true, x: 65, y: 207, w: 30, h: 110, rx: 12 }, // visual left
+    { id: 'Left Leg', isRect: true, x: 105, y: 207, w: 30, h: 110, rx: 12 }, // visual right
+  ];
+
+  const backBodyParts = [
+    { id: 'Back of Head', isCircle: true, cx: 100, cy: 30, r: 22 },
+    { id: 'Neck (Back)', isRect: true, x: 90, y: 55, w: 20, h: 15 },
+    { id: 'Upper Back', isRect: true, x: 60, y: 73, w: 80, h: 45, rx: 10 },
+    { id: 'Lower Back', isRect: true, x: 65, y: 121, w: 70, h: 50, rx: 10 },
+    { id: 'Glutes', isRect: true, x: 65, y: 174, w: 70, h: 30, rx: 10 },
+    { id: 'Left Back Arm', isRect: true, x: 30, y: 73, w: 25, h: 100, rx: 12 }, // visual left
+    { id: 'Right Back Arm', isRect: true, x: 145, y: 73, w: 25, h: 100, rx: 12 }, // visual right
+    { id: 'Left Hamstring', isRect: true, x: 65, y: 207, w: 30, h: 50, rx: 10 },
+    { id: 'Right Hamstring', isRect: true, x: 105, y: 207, w: 30, h: 50, rx: 10 },
+    { id: 'Left Calf', isRect: true, x: 65, y: 260, w: 30, h: 57, rx: 10 },
+    { id: 'Right Calf', isRect: true, x: 105, y: 260, w: 30, h: 57, rx: 10 },
+  ];
+
+  const toggleSymptom = (sym) => {
+    if (selectedSymptoms.includes(sym)) {
+      setSelectedSymptoms(selectedSymptoms.filter(s => s !== sym));
+    } else {
+      setSelectedSymptoms([...selectedSymptoms, sym]);
+    }
+  };
+
+  const toggleBodyPart = (part) => {
+    if (selectedBodyParts.includes(part)) {
+      setSelectedBodyParts(selectedBodyParts.filter(p => p !== part));
+    } else {
+      setSelectedBodyParts([...selectedBodyParts, part]);
+    }
+  };
+
+  const pickImage = async () => {
+    let result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      quality: 0.8,
+      allowsMultipleSelection: true,
+    });
+    if (!result.canceled) {
+      const newUris = result.assets.map(a => a.uri);
+      setAttachments([...attachments, ...newUris]);
+    }
+  };
+
+  const isProceedDisabled = !mainConcern.trim();
+
+  return (
+    <SafeAreaView style={styles.safeArea}>
+      <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
+      <Header title="Consultation Intake Form" subtitle={`${consultationType} • Help us understand your health concern to provide better care`} icon="document-text-outline" navigation={navigation} />
+      
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={[styles.content, { paddingBottom: 40 }]} keyboardShouldPersistTaps="handled">
+        
+        <Card>
+          <Text style={styles.inputLabel}>What is your main concern? *</Text>
+          <TextInput 
+            style={[styles.textInput, { height: 80, paddingTop: 12 }]} 
+            placeholder="Describe your concern briefly (e.g., 'I have a persistent cough for 3 days with mild fever')" 
+            placeholderTextColor="#94A3B8" 
+            multiline 
+            value={mainConcern}
+            onChangeText={setMainConcern}
+          />
+          <Text style={{ fontSize: 11, color: muted, marginTop: 6 }}>This helps the doctor prepare for your consultation</Text>
+        </Card>
+
+        <Card>
+          <Text style={styles.cardTitle}>Common Symptoms</Text>
+          <Text style={[styles.bodyText, { marginBottom: 12 }]}>Select all that apply</Text>
+          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 16 }}>
+            {commonSymptoms.map((sym, idx) => (
+              <TouchableOpacity key={idx} style={{ paddingHorizontal: 12, paddingVertical: 8, borderRadius: 16, borderWidth: 1, borderColor: selectedSymptoms.includes(sym) ? cyan : '#E2E8F0', backgroundColor: selectedSymptoms.includes(sym) ? cyan : '#F8FAFC' }} onPress={() => toggleSymptom(sym)}>
+                <Text style={{ color: selectedSymptoms.includes(sym) ? '#FFFFFF' : muted, fontSize: 12, fontWeight: '600' }}>{sym}</Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+
+          <Text style={styles.cardTitle}>Other Symptoms</Text>
+          <Text style={[styles.bodyText, { marginBottom: 12 }]}>Add any symptoms not listed above</Text>
+          <TextInput style={[styles.textInput, { height: 60, paddingTop: 12 }]} placeholder="e.g., Rash on arms, numbness in fingers, etc." placeholderTextColor="#94A3B8" multiline value={otherSymptoms} onChangeText={setOtherSymptoms} />
+        </Card>
+
+        <Card>
+          <Text style={styles.cardTitle}>Pain Location</Text>
+          <Text style={[styles.bodyText, { marginBottom: 16 }]}>Click on the body areas where you feel pain or discomfort</Text>
+          
+          <View style={[styles.segmentRow, { marginBottom: 16 }]}>
+            {['Front', 'Back'].map((view) => (
+              <TouchableOpacity key={view} style={[styles.segment, bodyView === view && styles.segmentActive]} onPress={() => setBodyView(view)}>
+                <Text style={[styles.segmentText, bodyView === view && styles.segmentTextActive]}>{view} View</Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+
+          <View style={{ backgroundColor: '#F8FAFC', borderRadius: 12, padding: 16, borderWidth: 1, borderColor: '#E2E8F0', alignItems: 'center' }}>
+            <Svg width="200" height="320" viewBox="0 0 200 320" style={{ marginBottom: 16 }}>
+              {(bodyView === 'Front' ? frontBodyParts : backBodyParts).map(part => {
+                const isSelected = selectedBodyParts.includes(part.id);
+                return <AnimatedBodyPart key={part.id} part={part} isSelected={isSelected} onPress={() => toggleBodyPart(part.id)} />;
+              })}
+            </Svg>
+
+            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, justifyContent: 'center' }}>
+              {(bodyView === 'Front' ? frontBodyParts : backBodyParts).map(part => (
+                <TouchableOpacity key={part.id} style={{ paddingHorizontal: 12, paddingVertical: 6, borderRadius: 8, borderWidth: 1, borderColor: selectedBodyParts.includes(part.id) ? '#EF4444' : '#CBD5E1', backgroundColor: selectedBodyParts.includes(part.id) ? '#FEF2F2' : '#FFFFFF' }} onPress={() => toggleBodyPart(part.id)}>
+                  <Text style={{ color: selectedBodyParts.includes(part.id) ? '#EF4444' : ink, fontSize: 12, fontWeight: '600' }}>{part.id}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          </View>
+        </Card>
+
+        <Card>
+          <Text style={[styles.cardTitle, { marginBottom: 16 }]}>Additional Details (Optional)</Text>
+          
+          <Text style={styles.inputLabel}>Duration (Days)</Text>
+          <TextInput style={[styles.textInput, { marginBottom: 20 }]} placeholder="e.g. 5" placeholderTextColor="#94A3B8" keyboardType="numeric" value={duration} onChangeText={setDuration} />
+
+          <Text style={styles.inputLabel}>Pain/Discomfort Severity: {painLevel > 0 ? `${painLevel}/10` : 'None'}</Text>
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 8, marginTop: 4 }}>
+            {Array.from({ length: 10 }).map((_, i) => {
+              const level = i + 1;
+              const isSelected = painLevel >= level;
+              // Simple color gradient from green to red
+              const color = level <= 3 ? '#10B981' : level <= 7 ? '#F59E0B' : '#EF4444';
+              return (
+                <TouchableOpacity key={level} style={{ flex: 1, height: 32, marginHorizontal: 2, borderRadius: 4, backgroundColor: isSelected ? color : '#F1F5F9', borderWidth: isSelected ? 0 : 1, borderColor: '#E2E8F0', alignItems: 'center', justifyContent: 'center' }} onPress={() => setPainLevel(level)}>
+                  <Text style={{ color: isSelected ? '#FFFFFF' : muted, fontSize: 12, fontWeight: '800' }}>{level}</Text>
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between', paddingHorizontal: 4 }}>
+            <Text style={{ fontSize: 11, color: muted, fontWeight: '600' }}>Mild</Text>
+            <Text style={{ fontSize: 11, color: muted, fontWeight: '600' }}>Moderate</Text>
+            <Text style={{ fontSize: 11, color: muted, fontWeight: '600' }}>Severe</Text>
+          </View>
+        </Card>
+
+        <Card>
+          <Text style={styles.cardTitle}>Attachments (Optional)</Text>
+          <Text style={[styles.bodyText, { marginBottom: 16 }]}>Upload images of rashes, prescriptions, lab results, etc.</Text>
+          
+          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 12, marginBottom: attachments.length > 0 ? 12 : 0 }}>
+            {attachments.map((uri, idx) => (
+              <View key={idx} style={{ width: 80, height: 80, borderRadius: 8, overflow: 'hidden', borderWidth: 1, borderColor: '#E2E8F0' }}>
+                <Image source={{ uri }} style={{ width: '100%', height: '100%' }} resizeMode="cover" />
+                <TouchableOpacity style={{ position: 'absolute', top: 4, right: 4, backgroundColor: 'rgba(0,0,0,0.5)', borderRadius: 12, padding: 2 }} onPress={() => setAttachments(attachments.filter((_, i) => i !== idx))}>
+                  <Ionicons name="close" size={14} color="#FFFFFF" />
+                </TouchableOpacity>
+              </View>
+            ))}
+            <TouchableOpacity style={{ width: 80, height: 80, borderRadius: 8, borderWidth: 1, borderColor: cyan, borderStyle: 'dashed', backgroundColor: '#F8FCFF', alignItems: 'center', justifyContent: 'center' }} onPress={pickImage}>
+              <Ionicons name="camera-outline" size={24} color={cyan} />
+              <Text style={{ fontSize: 10, color: cyan, fontWeight: '700', marginTop: 4 }}>Upload</Text>
+            </TouchableOpacity>
+          </View>
+          <Text style={{ fontSize: 11, color: muted, marginTop: 4 }}>(PNG, JPG up to 10MB each)</Text>
+        </Card>
+
+        <View style={{ backgroundColor: '#F0FDF4', padding: 16, borderRadius: 12, borderWidth: 1, borderColor: '#BBF7D0', marginBottom: 24 }}>
+          <Text style={{ color: '#166534', fontWeight: '800', fontSize: 15, marginBottom: 8 }}>Important Information</Text>
+          <Text style={{ color: '#15803D', fontSize: 13, marginBottom: 4 }}>• This information is confidential and HIPAA-protected</Text>
+          <Text style={{ color: '#15803D', fontSize: 13, marginBottom: 4 }}>• A doctor will review your intake before the consultation</Text>
+          <Text style={{ color: '#EF4444', fontSize: 13, fontWeight: '600' }}>• In case of emergency, please call 911 or go to the nearest ER</Text>
+        </View>
+
+        <View style={{ paddingTop: 20, borderTopWidth: 1, borderTopColor: '#E2E8F0', marginTop: 8 }}>
+          <PrimaryButton label="Proceed to Consultation" disabled={isProceedDisabled} color={isProceedDisabled ? '#CBD5E1' : cyan} onPress={() => navigation.navigate('Appointments')} />
+          <TouchableOpacity style={{ alignItems: 'center', marginTop: 16 }} onPress={() => navigation.goBack()}>
+            <Text style={{ color: muted, fontSize: 14, fontWeight: '700' }}>Save for Later</Text>
+          </TouchableOpacity>
+          {isProceedDisabled && <Text style={{ textAlign: 'center', fontSize: 11, color: '#EF4444', marginTop: 12 }}>Please describe your main concern to continue</Text>}
+        </View>
+      </ScrollView>
+    </SafeAreaView>
+  );
+}
+
+export function MessagesScreen({ navigation, route }) {
   const [activeChatId, setActiveChatId] = useState(null);
+  const activeChatIdRef = useRef(activeChatId);
+  const scrollViewRef = useRef(null);
   const [inputText, setInputText] = useState('');
   
+  useEffect(() => {
+    activeChatIdRef.current = activeChatId;
+  }, [activeChatId]);
+
+  useEffect(() => {
+    if (route?.params?.chatId) {
+      setActiveChatId(route.params.chatId);
+      navigation.setParams({ chatId: undefined }); // Clear param so back navigation works smoothly
+    }
+  }, [route?.params?.chatId]);
+
   const [conversations, setConversations] = useState([
     {
       id: '1',
@@ -1255,6 +3161,7 @@ export function MessagesScreen({ navigation }) {
       avatar: 'SJ',
       color: '#089FB4',
       unread: 2,
+      isTyping: false,
       messages: [
         { id: 'm1', sender: 'Dr. Sarah Johnson', text: 'Hello Sarah, your lab results look good. Everything is within normal limits.', time: '10:30 AM' },
         { id: 'm2', sender: 'You', text: 'That is a relief to hear! Do I need to change my medication?', time: '10:45 AM' },
@@ -1268,6 +3175,7 @@ export function MessagesScreen({ navigation }) {
       avatar: 'CT',
       color: '#F59E0B',
       unread: 0,
+      isTyping: false,
       messages: [
         { id: 'c1', sender: 'Care Team', text: 'Hi Sarah, your referral request has been received.', time: 'Yesterday' },
         { id: 'c2', sender: 'You', text: 'Thank you. Can I book this week?', time: 'Yesterday' },
@@ -1281,9 +3189,22 @@ export function MessagesScreen({ navigation }) {
       avatar: 'NE',
       color: '#10B981',
       unread: 0,
+      isTyping: false,
       messages: [
         { id: 'n1', sender: 'You', text: 'Hi Emily, I have a quick question about my wound dressing.', time: 'Monday' },
         { id: 'n2', sender: 'Nurse Emily', text: 'Sure, what seems to be the issue? Is there any redness or swelling?', time: 'Monday' },
+      ]
+    },
+    {
+      id: 'pharmacy_1',
+      name: 'Pharmacy Support',
+      role: 'Order Assistance',
+      avatar: 'Rx',
+      color: '#0AB4B5',
+      unread: 0,
+      isTyping: false,
+      messages: [
+        { id: 'rx1', sender: 'Pharmacy Support', text: 'Hello! Do you have any questions regarding your current medication orders?', time: 'Just now' },
       ]
     }
   ]);
@@ -1298,13 +3219,33 @@ export function MessagesScreen({ navigation }) {
       time: 'Just now'
     };
 
+    const currentChatId = activeChatId;
+
     setConversations(prev => prev.map(chat => {
-      if (chat.id === activeChatId) {
-        return { ...chat, messages: [...chat.messages, newMessage] };
+      if (chat.id === currentChatId) {
+        return { ...chat, messages: [...chat.messages, newMessage], isTyping: true };
       }
       return chat;
     }));
     setInputText('');
+
+    setTimeout(() => {
+      setConversations(prev => prev.map(chat => {
+        if (chat.id === currentChatId) {
+          const isChatStillOpen = activeChatIdRef.current === currentChatId;
+          const autoReply = {
+            id: Date.now().toString(),
+            sender: chat.name,
+            text: chat.id === 'pharmacy_1' 
+              ? "Thanks for reaching out! A pharmacist will review your request and get back to you momentarily."
+              : "Thank you for your message. I will review it and get back to you as soon as possible.",
+            time: 'Just now'
+          };
+          return { ...chat, messages: [...chat.messages, autoReply], unread: isChatStillOpen ? chat.unread : (chat.unread || 0) + 1, isTyping: false };
+        }
+        return chat;
+      }));
+    }, 2000);
   };
 
   if (!activeChatId) {
@@ -1362,6 +3303,7 @@ export function MessagesScreen({ navigation }) {
   return (
     <SafeAreaView style={styles.safeArea}>
       <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
+      <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
       
       {/* Chat Header */}
       <View style={styles.activeChatHeader}>
@@ -1375,16 +3317,16 @@ export function MessagesScreen({ navigation }) {
           <Text style={styles.activeChatName}>{activeChat.name}</Text>
           <Text style={styles.activeChatRole}>{activeChat.role}</Text>
         </View>
-        <TouchableOpacity style={{ padding: 8 }}>
-          <Ionicons name="call-outline" size={22} color={cyan} />
-        </TouchableOpacity>
-        <TouchableOpacity style={{ padding: 8, marginRight: -8 }}>
-          <Ionicons name="videocam-outline" size={24} color={cyan} />
-        </TouchableOpacity>
       </View>
 
       {/* Chat Messages */}
-      <ScrollView contentContainerStyle={styles.chatScrollArea}>
+      <ScrollView 
+        ref={scrollViewRef}
+        contentContainerStyle={styles.chatScrollArea}
+        onContentSizeChange={() => scrollViewRef.current?.scrollToEnd({ animated: true })}
+        onLayout={() => scrollViewRef.current?.scrollToEnd({ animated: true })}
+        keyboardShouldPersistTaps="handled"
+      >
         {activeChat.messages.map(msg => {
           const isMine = msg.sender === 'You';
           return (
@@ -1398,38 +3340,23 @@ export function MessagesScreen({ navigation }) {
                 <Text style={[styles.chatText, isMine ? styles.chatMineText : styles.chatOtherText]}>{msg.text}</Text>
                 <Text style={[styles.chatTime, isMine ? styles.chatMineTime : styles.chatOtherTime]}>{msg.time}</Text>
               </View>
-=======
-  const [message, setMessage] = useState('');
-  const chat = [
-    ['Care Team', 'Hi Sarah, your referral request has been received.', '9:12 AM'],
-    ['You', 'Thank you. Can I book this week?', '9:14 AM'],
-    ['Care Team', 'Yes, we have orthopedic appointments available Friday.', '9:15 AM'],
-  ];
-
-  return (
-    <SafeAreaView style={styles.safeArea}>
-      <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
-      <Header title="Messages" subtitle="Chat with your care team" icon="chatbubble-ellipses-outline" navigation={navigation} />
-      <ScrollView contentContainerStyle={styles.content}>
-        {chat.map(([sender, text, time], idx) => {
-          const mine = sender === 'You';
-          return (
-            <View key={`${time}-${idx}`} style={[styles.chatBubble, mine && styles.chatBubbleMine]}>
-              <Text style={[styles.chatSender, mine && styles.chatMineText]}>{sender}</Text>
-              <Text style={[styles.chatText, mine && styles.chatMineText]}>{text}</Text>
-              <Text style={[styles.chatTime, mine && styles.chatMineText]}>{time}</Text>
->>>>>>> 867d58274d4ae65dd8e9435f42c2efd4b90eaaa5
             </View>
           );
         })}
+        {activeChat.isTyping && (
+          <View style={[styles.messageWrapper, styles.messageWrapperOther]}>
+            <View style={[styles.chatAvatarTiny, { backgroundColor: activeChat.color }]}>
+              <Text style={styles.chatAvatarTextTiny}>{activeChat.avatar}</Text>
+            </View>
+            <View style={[styles.chatBubble, styles.chatBubbleOther]}>
+              <Text style={[styles.chatText, styles.chatOtherText, { fontStyle: 'italic' }]}>Typing...</Text>
+            </View>
+          </View>
+        )}
       </ScrollView>
-<<<<<<< HEAD
 
       {/* Message Composer */}
       <View style={styles.messageComposer}>
-        <TouchableOpacity style={{ padding: 8 }}>
-          <Ionicons name="add" size={28} color={muted} />
-        </TouchableOpacity>
         <TextInput
           value={inputText}
           onChangeText={setInputText}
@@ -1440,20 +3367,9 @@ export function MessagesScreen({ navigation }) {
         />
         <TouchableOpacity style={[styles.sendButton, !inputText.trim() && { backgroundColor: '#CBD5E1' }]} onPress={sendMessage} disabled={!inputText.trim()}>
           <Ionicons name="send" size={16} color="#FFFFFF" style={{ marginLeft: 2 }} />
-=======
-      <View style={styles.messageComposer}>
-        <TextInput
-          value={message}
-          onChangeText={setMessage}
-          style={styles.messageInput}
-          placeholder="Type a message"
-          placeholderTextColor="#94A3B8"
-        />
-        <TouchableOpacity style={styles.sendButton} onPress={() => setMessage('')}>
-          <Ionicons name="send" size={18} color="#FFFFFF" />
->>>>>>> 867d58274d4ae65dd8e9435f42c2efd4b90eaaa5
         </TouchableOpacity>
       </View>
+      </KeyboardAvoidingView>
     </SafeAreaView>
   );
 }
@@ -1499,11 +3415,7 @@ export function JoinVideoCallScreen({ navigation }) {
         <TouchableOpacity style={[styles.callControl, cameraOff && styles.callControlActive]} onPress={() => setCameraOff(!cameraOff)}>
           <Ionicons name={cameraOff ? 'videocam-off' : 'videocam'} size={24} color="#FFFFFF" />
         </TouchableOpacity>
-<<<<<<< HEAD
         <TouchableOpacity style={[styles.callControl, styles.endCall]} onPress={() => navigation.canGoBack() ? navigation.goBack() : navigation.navigate('Dashboard')}>
-=======
-        <TouchableOpacity style={[styles.callControl, styles.endCall]} onPress={() => navigation.goBack()}>
->>>>>>> 867d58274d4ae65dd8e9435f42c2efd4b90eaaa5
           <Ionicons name="call" size={24} color="#FFFFFF" />
         </TouchableOpacity>
       </View>
@@ -1515,7 +3427,6 @@ export function JoinVideoCallScreen({ navigation }) {
   );
 }
 
-<<<<<<< HEAD
 export function MedicalRecordsScreen({ navigation }) {
   const [selectedCategory, setSelectedCategory] = useState('Consultation History');
   const [searchQuery, setSearchQuery] = useState('');
@@ -2094,27 +4005,6 @@ export function MedicalRecordsScreen({ navigation }) {
           return null;
         })
       )}
-=======
-export function ReferralDetailsScreen({ navigation }) {
-  return (
-    <Screen title="Referral Details" subtitle="Orthopedic surgeon referral" icon="git-branch-outline" navigation={navigation}>
-      <Card style={[styles.card, styles.warningBorder]}>
-        <View style={styles.rowBetween}>
-          <Text style={styles.largeTitle}>Specialist Referral</Text>
-          <Pill label="Pending" color="#F59E0B" />
-        </View>
-        <Text style={styles.bodyText}>Referred by Dr. Sofia Lim (Cardiologist)</Text>
-        <View style={styles.detailBlock}>
-          <Text style={styles.detailLabel}>Reason</Text>
-          <Text style={styles.detailText}>Knee pain after exercise</Text>
-        </View>
-        <View style={styles.detailBlock}>
-          <Text style={styles.detailLabel}>Referral Date</Text>
-          <Text style={styles.detailText}>February 10, 2026</Text>
-        </View>
-        <PrimaryButton label="Book Appointment" icon="person-add" color="#F59E0B" onPress={() => navigateRoot(navigation, 'Appointments')} />
-      </Card>
->>>>>>> 867d58274d4ae65dd8e9435f42c2efd4b90eaaa5
     </Screen>
   );
 }
@@ -2128,7 +4018,6 @@ export function InvoiceScreen({ navigation }) {
   return (
     <Screen title="Invoice" subtitle="Pending payment" icon="card-outline" navigation={navigation}>
       <Card>
-<<<<<<< HEAD
         <View style={styles.rowBetween}>
           <Text style={styles.largeTitle}>Invoice</Text>
           <Text style={[styles.bodyText, { fontWeight: '700', color: ink }]}>INV-2026-0328-001</Text>
@@ -2522,26 +4411,6 @@ export function MedicalRecordsSharingScreen({ navigation }) {
       </SafeAreaView>
     </Modal>
     </>
-=======
-        <Text style={styles.heroEyebrow}>Consultation with</Text>
-        <Text style={styles.largeTitle}>Dr. Maria Santos</Text>
-        <Text style={styles.bodyText}>Consultation Date: March 28, 2026</Text>
-      </Card>
-      <Card>
-        {items.map(([label, amount]) => (
-          <View key={label} style={styles.invoiceRow}>
-            <Text style={styles.bodyText}>{label}</Text>
-            <Text style={styles.invoiceAmount}>{amount}</Text>
-          </View>
-        ))}
-        <View style={styles.invoiceTotal}>
-          <Text style={styles.cardTitle}>Total Due</Text>
-          <Text style={styles.totalAmount}>$800</Text>
-        </View>
-        <PrimaryButton label="Pay Now" icon="card" color="#F59E0B" />
-      </Card>
-    </Screen>
->>>>>>> 867d58274d4ae65dd8e9435f42c2efd4b90eaaa5
   );
 }
 
@@ -2655,7 +4524,6 @@ const styles = StyleSheet.create({
   },
   searchInput: { flex: 1, color: ink, fontSize: 14, marginLeft: 8 },
   recordIcon: { width: 44, height: 44, borderRadius: 12, backgroundColor: '#F1FAFE', alignItems: 'center', justifyContent: 'center' },
-<<<<<<< HEAD
   
   // --- MESSAGING STYLES ---
   chatListItem: { flexDirection: 'row', alignItems: 'center', paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: '#F1F5F9' },
@@ -2697,32 +4565,10 @@ const styles = StyleSheet.create({
     alignItems: 'flex-end',
     paddingHorizontal: 10,
     paddingVertical: 12,
-=======
-  chatBubble: {
-    alignSelf: 'flex-start',
-    maxWidth: '86%',
-    backgroundColor: '#FFFFFF',
-    borderRadius: 13,
-    padding: 13,
-    marginBottom: 10,
-    borderWidth: 1,
-    borderColor: '#D8EAF0',
-  },
-  chatBubbleMine: { alignSelf: 'flex-end', backgroundColor: cyan, borderColor: cyan },
-  chatSender: { color: ink, fontSize: 12, fontWeight: '800', marginBottom: 5 },
-  chatText: { color: muted, fontSize: 14, lineHeight: 20 },
-  chatTime: { color: '#64748B', fontSize: 10, marginTop: 7, alignSelf: 'flex-end' },
-  chatMineText: { color: '#FFFFFF' },
-  messageComposer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: 10,
->>>>>>> 867d58274d4ae65dd8e9435f42c2efd4b90eaaa5
     borderTopWidth: 1,
     borderTopColor: '#E2E8F0',
     backgroundColor: '#FFFFFF',
   },
-<<<<<<< HEAD
   messageInput: { 
     flex: 1, 
     minHeight: 40, 
@@ -2738,10 +4584,6 @@ const styles = StyleSheet.create({
   },
   sendButton: { width: 40, height: 40, borderRadius: 20, backgroundColor: cyan, alignItems: 'center', justifyContent: 'center', marginBottom: 2 },
 
-=======
-  messageInput: { flex: 1, height: 42, borderRadius: 10, backgroundColor: '#F1FAFE', paddingHorizontal: 13, color: ink },
-  sendButton: { width: 42, height: 42, borderRadius: 10, backgroundColor: cyan, alignItems: 'center', justifyContent: 'center', marginLeft: 9 },
->>>>>>> 867d58274d4ae65dd8e9435f42c2efd4b90eaaa5
   videoPreview: {
     height: 300,
     borderRadius: 16,
@@ -2767,7 +4609,7 @@ const styles = StyleSheet.create({
   totalAmount: { color: '#F59E0B', fontSize: 26, fontWeight: '900' },
 
   // --- AUTH & FORMS ---
-  authWrapper: { backgroundColor: bg, justifyContent: 'center', paddingHorizontal: 16 },
+  authWrapper: { backgroundColor: bg, paddingHorizontal: 16 },
   authHeader: { alignItems: 'center', marginBottom: 30 },
   authLogoBox: { width: 64, height: 64, borderRadius: 18, backgroundColor: cyan, alignItems: 'center', justifyContent: 'center', marginBottom: 12, shadowColor: cyan, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 8, elevation: 4 },
   authLogoText: { color: '#FFFFFF', fontSize: 28, fontWeight: '900' },

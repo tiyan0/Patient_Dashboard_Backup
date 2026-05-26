@@ -7,8 +7,8 @@ import {
   TouchableOpacity,
   Platform,
   StatusBar,
+  SafeAreaView,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 
 export default function DashboardScreen({ navigation }) {
@@ -136,7 +136,7 @@ export default function DashboardScreen({ navigation }) {
             <View style={styles.actionRow}>
               <TouchableOpacity
                 style={styles.warningButton}
-                onPress={() => navigation.navigate('Appointments')}
+                onPress={() => navigation.navigate('BookSpecialist')}
               >
                 <Ionicons name="person-add" size={16} color="#FFFFFF" style={styles.btnIcon} />
                 <Text style={styles.warningButtonText}>Book Appointment</Text>
@@ -289,10 +289,10 @@ export default function DashboardScreen({ navigation }) {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: '#F8FAFC',
+    backgroundColor: '#ffffff',
   },
   scrollContent: {
-    backgroundColor: '#F8FAFC',
+    backgroundColor: '#ffffff',
     paddingBottom: 40,
   },
   // --- HERO SECTION ---
