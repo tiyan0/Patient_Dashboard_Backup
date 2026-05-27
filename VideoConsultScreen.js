@@ -627,7 +627,7 @@ export default function VideoConsultScreen({ navigation }) {
                 ))}
               </View>
 
-              <TouchableOpacity style={styles.selectButton}>
+              <TouchableOpacity style={styles.selectButton} onPress={() => navigation.navigate('BookTherapy')}>
                 <Text style={styles.selectButtonText}>Book Therapy</Text>
                 <Ionicons name="arrow-forward" size={16} color="#FFFFFF" />
               </TouchableOpacity>

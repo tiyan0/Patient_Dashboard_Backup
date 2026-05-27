@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -9,9 +9,28 @@ import {
   StatusBar,
   SafeAreaView,
 } from 'react-native';
-import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
+import { Ionicons } from '@expo/vector-icons';
 
-export default function DashboardScreen({ navigation }) {
+export default function DashboardScreen({ navigation, route }) {
+  const [pendingReferrals, setPendingReferrals] = useState([
+    {
+      id: '1',
+      title: 'Specialist Referral - Orthopedic Surgeon',
+      subtitle: 'Referred by Dr. Sofia Lim (Cardiologist)',
+      reason: 'Knee pain after exercise',
+      date: 'February 10, 2026',
+      actionType: 'BookSpecialist',
+      preselectedDoctor: 'Dr. Miguel Garcia'
+    }
+  ]);
+
+  useEffect(() => {
+    if (route?.params?.newReferralRequest) {
+      setPendingReferrals(prev => [route.params.newReferralRequest, ...prev]);
+      navigation.setParams({ newReferralRequest: undefined });
+    }
+  }, [route?.params?.newReferralRequest, navigation]);
+
   return (
     <SafeAreaView style={styles.safeArea}>
       <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
@@ -115,40 +134,55 @@ export default function DashboardScreen({ navigation }) {
             </TouchableOpacity>
           </View>
 
-          <View style={[styles.card, styles.cardLeftBorderWarning]}>
-            <View style={styles.rowSpaceBetween}>
-              <Text style={styles.cardPrimaryTitle}>Specialist Referral - Orthopedic Surgeon</Text>
-              <View style={styles.badgeWarning}><Text style={styles.badgeWarningText}>Pending</Text></View>
-            </View>
-            <Text style={styles.cardDetailText}>Referred by Dr. Sofia Lim (Cardiologist)</Text>
-            
-            <View style={styles.bulletList}>
-              <View style={styles.bulletItem}>
-                <Ionicons name="medical-outline" size={14} color="#64748B" />
-                <Text style={styles.bulletText}><Text style={styles.boldText}>Reason:</Text> Knee pain after exercise</Text>
+          {pendingReferrals.map((ref, idx) => (
+            <View key={ref.id || idx} style={[styles.card, styles.cardLeftBorderWarning]}>
+              <View style={styles.rowSpaceBetween}>
+                <Text style={styles.cardPrimaryTitle}>{ref.title}</Text>
+                <View style={styles.badgeWarning}>
+                  <Text style={styles.badgeWarningText}>
+                    Pending
+                  </Text>
+                </View>
               </View>
-              <View style={styles.bulletItem}>
-                <Ionicons name="calendar-outline" size={14} color="#64748B" />
-                <Text style={styles.bulletText}><Text style={styles.boldText}>Referral Date:</Text> February 10, 2026</Text>
+              <Text style={styles.cardDetailText}>{ref.subtitle}</Text>
+              
+              <View style={styles.bulletList}>
+                <View style={styles.bulletItem}>
+                  <Ionicons name="medical-outline" size={14} color="#64748B" />
+                  <Text style={styles.bulletText}><Text style={styles.boldText}>Reason:</Text> {ref.reason}</Text>
+                </View>
+                <View style={styles.bulletItem}>
+                  <Ionicons name="calendar-outline" size={14} color="#64748B" />
+                  <Text style={styles.bulletText}><Text style={styles.boldText}>Date:</Text> {ref.date}</Text>
+                </View>
               </View>
-            </View>
 
-            <View style={styles.actionRow}>
-              <TouchableOpacity
-                style={styles.warningButton}
-                onPress={() => navigation.navigate('BookSpecialist')}
-              >
-                <Ionicons name="person-add" size={16} color="#FFFFFF" style={styles.btnIcon} />
-                <Text style={styles.warningButtonText}>Book Appointment</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={styles.outlineButton}
-                onPress={() => navigation.navigate('ReferralDetails')}
-              >
-                <Text style={styles.outlineButtonText}>View Details</Text>
-              </TouchableOpacity>
+              <View style={styles.actionRow}>
+                <TouchableOpacity
+                  style={styles.warningButton}
+                  onPress={() => {
+                    if (ref.actionType === 'BookTherapy') navigation.navigate('BookTherapy', { preselectedTherapy: ref.specialty });
+                    else if (ref.actionType === 'BookSpecialist') navigation.navigate('BookSpecialist', { preselectedDoctor: ref.preselectedDoctor, preselectedSpecialty: ref.specialty });
+                    else navigation.navigate('BookSpecialist');
+                  }}
+                >
+                  <Ionicons name="person-add" size={16} color="#FFFFFF" style={styles.btnIcon} />
+                  <Text style={styles.warningButtonText}>Book Appointment</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={styles.outlineButton} onPress={() => navigation.navigate('ReferralDetails', { referralData: ref })}>
+                  <Text style={styles.outlineButtonText}>View Details</Text>
+                </TouchableOpacity>
+              </View>
             </View>
-          </View>
+          ))}
+
+          <TouchableOpacity 
+            style={[styles.outlineButton, { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', borderStyle: 'dashed', borderWidth: 2, borderColor: '#089FB4', backgroundColor: '#F8FCFF', marginBottom: 24, paddingVertical: 14 }]}
+            onPress={() => navigation.navigate('RequestReferral')}
+          >
+            <Ionicons name="add-circle-outline" size={20} color="#089FB4" style={{ marginRight: 8 }} />
+            <Text style={{ color: '#089FB4', fontWeight: '700', fontSize: 14 }}>Request a New Referral</Text>
+          </TouchableOpacity>
 
           {/* Pending Payments */}
           <View style={styles.sectionHeaderRow}>

@@ -27,6 +27,27 @@ const bg = '#ffffff';
 const ink = '#071C3A';
 const muted = '#45627F';
 
+const formatPhoneNumber = (value) => {
+  if (!value) return '';
+  let digits = value.replace(/\D/g, '');
+  if (digits.length === 0) return '';
+  
+  if (digits.startsWith('0')) {
+    digits = '63' + digits.substring(1);
+  } else if (!digits.startsWith('63')) {
+    if (digits.length <= 2 && '63'.startsWith(digits)) {
+      // Allow user to manually type "6" then "3"
+    } else {
+      digits = '63' + digits;
+    }
+  }
+  
+  if (digits.length <= 2) return `+${digits}`;
+  if (digits.length <= 5) return `+${digits.substring(0, 2)} ${digits.substring(2)}`;
+  if (digits.length <= 8) return `+${digits.substring(0, 2)} ${digits.substring(2, 5)}-${digits.substring(5)}`;
+  return `+${digits.substring(0, 2)} ${digits.substring(2, 5)}-${digits.substring(5, 8)}-${digits.substring(8, 12)}`;
+};
+
 function Header({ title, subtitle, icon, navigation, hideBackButton }) {
   return (
     <View style={styles.header}>
@@ -187,7 +208,7 @@ export function AppointmentsScreen({ navigation, route }) {
       });
       navigation.setParams({ newAppointment: undefined });
     }
-  }, [route?.params?.newAppointment]);
+  }, [route?.params?.newAppointment, navigation]);
 
   const pastAppointments = [
     {
@@ -257,7 +278,7 @@ export function AppointmentsScreen({ navigation, route }) {
                   style={[styles.outlineButton, isPrimary && { backgroundColor: cyan, borderColor: cyan }]}
                   onPress={() => {
                     if (act === 'Join Call') navigation.navigate('JoinVideoCall');
-                    else if (act === 'Message') navigation.navigate('Messages');
+                    else if (act === 'Message') navigation.navigate('Messages', { doctorName: appt.doctor });
                     else if (act === 'Book Again') navigation.navigate('VideoConsult');
                   }}
                 >
@@ -700,7 +721,8 @@ export function CreateProfileScreen({ navigation }) {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [bloodType, setBloodType] = useState('');
   const [showBloodTypeDropdown, setShowBloodTypeDropdown] = useState(false);
-  const [emergencyRelationship, setEmergencyRelationship] = useState('Parent');
+  const [emergencyRelationship, setEmergencyRelationship] = useState('Mother');
+  const [otherRelationship, setOtherRelationship] = useState('');
   const [emergencyEmail, setEmergencyEmail] = useState('');
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
@@ -723,16 +745,17 @@ export function CreateProfileScreen({ navigation }) {
   const passwordsMatch = password === confirmPassword;
   const isEmailValid = email === '' || (email.includes('@') && email.includes('.'));
   const isEmergencyEmailValid = emergencyEmail === '' || (emergencyEmail.includes('@') && emergencyEmail.includes('.'));
-  const isPhoneValid = phone === '' || phone.replace(/\D/g, '').length === 11;
-  const isEmergencyPhoneValid = emergencyPhone === '' || emergencyPhone.replace(/\D/g, '').length === 11;
+  const isPhoneValid = phone === '' || phone.replace(/\D/g, '').length === 12;
+  const isEmergencyPhoneValid = emergencyPhone === '' || emergencyPhone.replace(/\D/g, '').length === 12;
 
   const canSubmit = firstName.trim() !== '' && lastName.trim() !== '' && dob !== null && 
     email.includes('@') && email.includes('.') && 
-    phone.replace(/\D/g, '').length === 11 && 
+    phone.replace(/\D/g, '').length === 12 && 
     password !== '' && passwordsMatch && 
     bloodType !== '' && 
     emergencyName.trim() !== '' && 
-    emergencyPhone.replace(/\D/g, '').length === 11 && 
+    emergencyPhone.replace(/\D/g, '').length === 12 && 
+    (emergencyRelationship !== 'Other' || otherRelationship.trim() !== '') &&
     emergencyEmail.includes('@') && emergencyEmail.includes('.');
 
   const bloodTypes = ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-', 'Unknown'];
@@ -772,8 +795,8 @@ export function CreateProfileScreen({ navigation }) {
         
         <View style={styles.inputGroup}>
           <Text style={styles.inputLabel}>Phone Number *</Text>
-          <TextInput style={[styles.textInput, !isPhoneValid && phone.length > 0 && { borderColor: '#EF4444' }]} placeholder="09XX XXX XXXX" placeholderTextColor="#94A3B8" keyboardType="phone-pad" value={phone} onChangeText={setPhone} maxLength={11} />
-          {(!isPhoneValid && phone.length > 0) && <Text style={{ color: '#EF4444', fontSize: 12, marginTop: 4 }}>Phone number must be 11 digits.</Text>}
+          <TextInput style={[styles.textInput, !isPhoneValid && phone.length > 0 && { borderColor: '#EF4444' }]} placeholder="+63 XXX-XXX-XXXX" placeholderTextColor="#94A3B8" keyboardType="phone-pad" value={phone} onChangeText={(t) => setPhone(formatPhoneNumber(t))} maxLength={16} />
+          {(!isPhoneValid && phone.length > 0) && <Text style={{ color: '#EF4444', fontSize: 12, marginTop: 4 }}>Phone number must be complete.</Text>}
         </View>
         <View style={styles.inputGroup}>
           <Text style={styles.inputLabel}>Email Address *</Text>
@@ -826,18 +849,27 @@ export function CreateProfileScreen({ navigation }) {
         <View style={styles.inputGroup}><Text style={styles.inputLabel}>Name of Emergency Contact *</Text><TextInput style={styles.textInput} placeholder="Emergency contact name" placeholderTextColor="#94A3B8" value={emergencyName} onChangeText={setEmergencyName} /></View>
         <View style={styles.inputGroup}>
           <Text style={styles.inputLabel}>Relationship to Patient *</Text>
-          <View style={{ flexDirection: 'row', gap: 8 }}>
-            {['Parent', 'Spouse', 'Sibling', 'Other'].map(r => (
-              <TouchableOpacity key={r} style={{ flex: 1, height: 44, borderRadius: 8, borderWidth: 1, borderColor: emergencyRelationship === r ? cyan : '#CBD5E1', backgroundColor: emergencyRelationship === r ? '#E8F6FA' : '#FFFFFF', alignItems: 'center', justifyContent: 'center' }} onPress={() => setEmergencyRelationship(r)}>
+          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+            {['Mother', 'Father', 'Spouse', 'Sibling', 'Aunt', 'Uncle', 'Cousin', 'Grandfather', 'Grandmother', 'Friend', 'Other'].map(r => (
+              <TouchableOpacity key={r} style={{ width: '31%', height: 44, borderRadius: 8, borderWidth: 1, borderColor: emergencyRelationship === r ? cyan : '#CBD5E1', backgroundColor: emergencyRelationship === r ? '#E8F6FA' : '#FFFFFF', alignItems: 'center', justifyContent: 'center', marginBottom: 4 }} onPress={() => setEmergencyRelationship(r)}>
                 <Text style={{ color: emergencyRelationship === r ? cyan : ink, fontWeight: '700', fontSize: 12 }} numberOfLines={1} adjustsFontSizeToFit>{r}</Text>
               </TouchableOpacity>
             ))}
           </View>
+          {emergencyRelationship === 'Other' && (
+            <TextInput 
+              style={[styles.textInput, { marginTop: 8 }]} 
+              placeholder="Please Specify" 
+              placeholderTextColor="#94A3B8" 
+              value={otherRelationship} 
+              onChangeText={setOtherRelationship} 
+            />
+          )}
         </View>
         <View style={styles.inputGroup}>
           <Text style={styles.inputLabel}>Phone Number of Emergency Contact *</Text>
-          <TextInput style={[styles.textInput, !isEmergencyPhoneValid && emergencyPhone.length > 0 && { borderColor: '#EF4444' }]} placeholder="09XX XXX XXXX" placeholderTextColor="#94A3B8" keyboardType="phone-pad" value={emergencyPhone} onChangeText={setEmergencyPhone} maxLength={11} />
-          {(!isEmergencyPhoneValid && emergencyPhone.length > 0) && <Text style={{ color: '#EF4444', fontSize: 12, marginTop: 4 }}>Phone number must be 11 digits.</Text>}
+          <TextInput style={[styles.textInput, !isEmergencyPhoneValid && emergencyPhone.length > 0 && { borderColor: '#EF4444' }]} placeholder="+63 XXX-XXX-XXXX" placeholderTextColor="#94A3B8" keyboardType="phone-pad" value={emergencyPhone} onChangeText={(t) => setEmergencyPhone(formatPhoneNumber(t))} maxLength={16} />
+          {(!isEmergencyPhoneValid && emergencyPhone.length > 0) && <Text style={{ color: '#EF4444', fontSize: 12, marginTop: 4 }}>Phone number must be complete.</Text>}
         </View>
         <View style={styles.inputGroup}>
           <Text style={styles.inputLabel}>Email of Emergency Contact *</Text>
@@ -850,33 +882,39 @@ export function CreateProfileScreen({ navigation }) {
   );
 }
 
-export function EditProfileScreen({ navigation }) {
-  const [profileImage, setProfileImage] = useState(null);
+export function EditProfileScreen({ navigation, route }) {
+  const currentProfile = route?.params?.currentProfile || {};
+
+  const [profileImage, setProfileImage] = useState(currentProfile.profileImage || null);
   const [gender, setGender] = useState('Female');
-  const [bloodType, setBloodType] = useState('O+');
+  const [bloodType, setBloodType] = useState(currentProfile.bloodType || 'O+');
   const [showBloodTypeDropdown, setShowBloodTypeDropdown] = useState(false);
-  const [emergencyRelationship, setEmergencyRelationship] = useState('Spouse');
-  const [emergencyEmail, setEmergencyEmail] = useState('john.williams@example.com');
-  const [phone, setPhone] = useState('09123456789');
-  const [firstName, setFirstName] = useState('Sarah');
-  const [lastName, setLastName] = useState('Williams');
-  const [address, setAddress] = useState('Oklahoma City, OK');
-  const [email, setEmail] = useState('sarah@example.com');
-  const [allergies, setAllergies] = useState('None');
-  const [emergencyName, setEmergencyName] = useState('John Williams');
-  const [emergencyPhone, setEmergencyPhone] = useState('09987654321');
+  const relationshipOptions = ['Mother', 'Father', 'Spouse', 'Sibling', 'Aunt', 'Uncle', 'Cousin', 'Grandfather', 'Grandmother', 'Friend', 'Other'];
+  const initialRel = currentProfile.emergencyRelationship || 'Spouse';
+  const [emergencyRelationship, setEmergencyRelationship] = useState(relationshipOptions.includes(initialRel) ? initialRel : 'Other');
+  const [otherRelationship, setOtherRelationship] = useState(relationshipOptions.includes(initialRel) ? '' : initialRel);
+  const [emergencyEmail, setEmergencyEmail] = useState(currentProfile.emergencyEmail || 'john.williams@example.com');
+  const [phone, setPhone] = useState(formatPhoneNumber(currentProfile.phone || '09123456789'));
+  const [firstName, setFirstName] = useState(currentProfile.firstName || 'Sarah');
+  const [lastName, setLastName] = useState(currentProfile.lastName || 'Williams');
+  const [address, setAddress] = useState(currentProfile.address || 'Oklahoma City, OK');
+  const [email, setEmail] = useState(currentProfile.email || 'sarah@example.com');
+  const [allergies, setAllergies] = useState(currentProfile.allergies || 'Penicillin, Peanuts');
+  const [emergencyName, setEmergencyName] = useState(currentProfile.emergencyName || 'John Williams');
+  const [emergencyPhone, setEmergencyPhone] = useState(formatPhoneNumber(currentProfile.emergencyPhone || '09987654321'));
 
   const bloodTypes = ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-', 'Unknown'];
   const isEmailValid = email === '' || (email.includes('@') && email.includes('.'));
   const isEmergencyEmailValid = emergencyEmail === '' || (emergencyEmail.includes('@') && emergencyEmail.includes('.'));
-  const isPhoneValid = phone === '' || phone.replace(/\D/g, '').length === 11;
-  const isEmergencyPhoneValid = emergencyPhone === '' || emergencyPhone.replace(/\D/g, '').length === 11;
+  const isPhoneValid = phone === '' || phone.replace(/\D/g, '').length === 12;
+  const isEmergencyPhoneValid = emergencyPhone === '' || emergencyPhone.replace(/\D/g, '').length === 12;
 
   const canSubmit = firstName.trim() !== '' && lastName.trim() !== '' && address.trim() !== '' &&
     email.includes('@') && email.includes('.') && 
-    phone.replace(/\D/g, '').length === 11 && 
+    phone.replace(/\D/g, '').length === 12 && 
     bloodType !== '' && emergencyName.trim() !== '' && 
-    emergencyPhone.replace(/\D/g, '').length === 11 && 
+    emergencyPhone.replace(/\D/g, '').length === 12 && 
+    (emergencyRelationship !== 'Other' || otherRelationship.trim() !== '') &&
     emergencyEmail.includes('@') && emergencyEmail.includes('.');
 
   const handleImagePick = async () => {
@@ -922,8 +960,8 @@ export function EditProfileScreen({ navigation }) {
         
         <View style={styles.inputGroup}>
           <Text style={styles.inputLabel}>Phone Number *</Text>
-          <TextInput style={[styles.textInput, !isPhoneValid && phone.length > 0 && { borderColor: '#EF4444' }]} placeholder="09XX XXX XXXX" placeholderTextColor="#94A3B8" keyboardType="phone-pad" value={phone} onChangeText={setPhone} maxLength={11} />
-          {(!isPhoneValid && phone.length > 0) && <Text style={{ color: '#EF4444', fontSize: 12, marginTop: 4 }}>Phone number must be 11 digits.</Text>}
+          <TextInput style={[styles.textInput, !isPhoneValid && phone.length > 0 && { borderColor: '#EF4444' }]} placeholder="+63 XXX-XXX-XXXX" placeholderTextColor="#94A3B8" keyboardType="phone-pad" value={phone} onChangeText={(t) => setPhone(formatPhoneNumber(t))} maxLength={16} />
+          {(!isPhoneValid && phone.length > 0) && <Text style={{ color: '#EF4444', fontSize: 12, marginTop: 4 }}>Phone number must be complete.</Text>}
         </View>
 
         <View style={styles.inputGroup}>
@@ -951,32 +989,74 @@ export function EditProfileScreen({ navigation }) {
         <View style={styles.inputGroup}><Text style={styles.inputLabel}>Name of Emergency Contact *</Text><TextInput style={styles.textInput} value={emergencyName} onChangeText={setEmergencyName} placeholderTextColor="#94A3B8" /></View>
         <View style={styles.inputGroup}>
           <Text style={styles.inputLabel}>Relationship to Patient *</Text>
-          <View style={{ flexDirection: 'row', gap: 8 }}>
-            {['Parent', 'Spouse', 'Sibling', 'Other'].map(r => (
-              <TouchableOpacity key={r} style={{ flex: 1, height: 44, borderRadius: 8, borderWidth: 1, borderColor: emergencyRelationship === r ? cyan : '#CBD5E1', backgroundColor: emergencyRelationship === r ? '#E8F6FA' : '#FFFFFF', alignItems: 'center', justifyContent: 'center' }} onPress={() => setEmergencyRelationship(r)}>
+          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+            {relationshipOptions.map(r => (
+              <TouchableOpacity key={r} style={{ width: '31%', height: 44, borderRadius: 8, borderWidth: 1, borderColor: emergencyRelationship === r ? cyan : '#CBD5E1', backgroundColor: emergencyRelationship === r ? '#E8F6FA' : '#FFFFFF', alignItems: 'center', justifyContent: 'center', marginBottom: 4 }} onPress={() => setEmergencyRelationship(r)}>
                 <Text style={{ color: emergencyRelationship === r ? cyan : ink, fontWeight: '700', fontSize: 12 }} numberOfLines={1} adjustsFontSizeToFit>{r}</Text>
               </TouchableOpacity>
             ))}
           </View>
+          {emergencyRelationship === 'Other' && (
+            <TextInput 
+              style={[styles.textInput, { marginTop: 8 }]} 
+              placeholder="Please Specify" 
+              placeholderTextColor="#94A3B8" 
+              value={otherRelationship} 
+              onChangeText={setOtherRelationship} 
+            />
+          )}
         </View>
         <View style={styles.inputGroup}>
           <Text style={styles.inputLabel}>Phone Number of Emergency Contact *</Text>
-          <TextInput style={[styles.textInput, !isEmergencyPhoneValid && emergencyPhone.length > 0 && { borderColor: '#EF4444' }]} value={emergencyPhone} onChangeText={setEmergencyPhone} placeholderTextColor="#94A3B8" keyboardType="phone-pad" maxLength={11} />
-          {(!isEmergencyPhoneValid && emergencyPhone.length > 0) && <Text style={{ color: '#EF4444', fontSize: 12, marginTop: 4 }}>Phone number must be 11 digits.</Text>}
+          <TextInput style={[styles.textInput, !isEmergencyPhoneValid && emergencyPhone.length > 0 && { borderColor: '#EF4444' }]} placeholder="+63 XXX-XXX-XXXX" value={emergencyPhone} onChangeText={(t) => setEmergencyPhone(formatPhoneNumber(t))} placeholderTextColor="#94A3B8" keyboardType="phone-pad" maxLength={16} />
+          {(!isEmergencyPhoneValid && emergencyPhone.length > 0) && <Text style={{ color: '#EF4444', fontSize: 12, marginTop: 4 }}>Phone number must be complete.</Text>}
         </View>
         <View style={styles.inputGroup}>
           <Text style={styles.inputLabel}>Email of Emergency Contact *</Text>
           <TextInput style={[styles.textInput, !isEmergencyEmailValid && { borderColor: '#EF4444' }]} placeholder="Emergency contact email" placeholderTextColor="#94A3B8" autoCapitalize="none" keyboardType="email-address" value={emergencyEmail} onChangeText={setEmergencyEmail} />
           {!isEmergencyEmailValid && <Text style={{ color: '#EF4444', fontSize: 12, marginTop: 4 }}>Please enter a valid email address.</Text>}
         </View>
-        <PrimaryButton label="Save Changes" icon="save-outline" onPress={() => navigation.canGoBack() ? navigation.goBack() : navigation.navigate('Profile')} color={canSubmit ? cyan : '#CBD5E1'} disabled={!canSubmit} />
+        <PrimaryButton 
+          label="Save Changes" 
+          icon="save-outline" 
+          onPress={() => navigation.navigate('Profile', {
+            updatedProfile: {
+              firstName, lastName, email, phone, address, bloodType, allergies, emergencyName, emergencyPhone, emergencyEmail, emergencyRelationship: emergencyRelationship === 'Other' ? otherRelationship : emergencyRelationship, profileImage
+            }
+          })} 
+          color={canSubmit ? cyan : '#CBD5E1'} 
+          disabled={!canSubmit} 
+        />
       </Card>
     </Screen>
   );
 }
 
-export function ProfileScreen({ navigation }) {
+export function ProfileScreen({ navigation, route }) {
   const [useBiometrics, setUseBiometrics] = useState(true);
+
+  const [profileData, setProfileData] = useState({
+    firstName: 'Sarah',
+    lastName: 'Williams',
+    email: 'sarah@example.com',
+    phone: '+63 912-345-6789',
+    address: 'Oklahoma City, OK',
+    dob: '12/05/1990',
+    bloodType: 'O+',
+    allergies: 'Penicillin, Peanuts',
+    emergencyName: 'John Williams',
+    emergencyPhone: '+63 998-765-4321',
+    emergencyEmail: 'john.williams@example.com',
+    emergencyRelationship: 'Spouse',
+    profileImage: null,
+  });
+
+  useEffect(() => {
+    if (route?.params?.updatedProfile) {
+      setProfileData(prev => ({ ...prev, ...route.params.updatedProfile }));
+      navigation.setParams({ updatedProfile: undefined });
+    }
+  }, [route?.params?.updatedProfile, navigation]);
 
   const accountLinks = [
     { icon: 'person-outline', title: 'Personal Information', route: 'EditProfile' },
@@ -991,34 +1071,79 @@ export function ProfileScreen({ navigation }) {
     { icon: 'globe-outline', title: 'Language & Region' },
   ];
 
+  const initials = `${profileData.firstName[0]}${profileData.lastName[0]}`.toUpperCase();
+
   return (
     <Screen title="Profile" subtitle="Your account and preferences" icon="person-outline" navigation={navigation}>
       <Card style={styles.profileCard}>
-        <View style={styles.avatar}><Text style={styles.avatarText}>SW</Text></View>
-        <Text style={styles.largeTitle}>Sarah Williams</Text>
+        <View style={[styles.avatar, profileData.profileImage && { backgroundColor: 'transparent' }]}>
+          {profileData.profileImage ? (
+            <Image source={{ uri: profileData.profileImage }} style={{ width: '100%', height: '100%', borderRadius: 22 }} />
+          ) : (
+            <Text style={styles.avatarText}>{initials}</Text>
+          )}
+        </View>
+        <Text style={styles.largeTitle}>{profileData.firstName} {profileData.lastName}</Text>
         <Text style={styles.bodyText}>Patient ID OKD-10482</Text>
         <View style={styles.tagRow}>
           <Pill label="Subscriber" color="#F59E0B" />
           <Pill label="Verified" color="#10B981" />
         </View>
         <View style={{ width: '100%', marginTop: 10 }}>
-          <PrimaryButton label="Edit Profile" icon="create-outline" onPress={() => navigation.navigate('EditProfile')} />
+          <PrimaryButton label="Edit Profile" icon="create-outline" onPress={() => navigation.navigate('EditProfile', { currentProfile: profileData })} />
         </View>
       </Card>
 
       <Text style={styles.sectionHeader}>Contact Information</Text>
       <Card>
-        <View style={styles.infoRow}><Text style={styles.infoLabel}>Email</Text><Text style={styles.infoValue}>sarah@example.com</Text></View>
-        <View style={styles.infoRow}><Text style={styles.infoLabel}>Phone</Text><Text style={styles.infoValue}>(555) 123-4567</Text></View>
-        <View style={styles.infoRow}><Text style={styles.infoLabel}>Address</Text><Text style={styles.infoValue}>Oklahoma City, OK</Text></View>
-        <View style={[styles.infoRow, { borderBottomWidth: 0 }]}><Text style={styles.infoLabel}>Date of Birth</Text><Text style={styles.infoValue}>12/05/1990</Text></View>
+        <View style={styles.infoRow}>
+          <View style={{ flexDirection: 'row', alignItems: 'center' }}><Ionicons name="mail-outline" size={16} color={muted} style={{ marginRight: 8 }} /><Text style={styles.infoLabel}>Email</Text></View>
+          <Text style={styles.infoValue}>{profileData.email}</Text>
+        </View>
+        <View style={styles.infoRow}>
+          <View style={{ flexDirection: 'row', alignItems: 'center' }}><Ionicons name="call-outline" size={16} color={muted} style={{ marginRight: 8 }} /><Text style={styles.infoLabel}>Phone</Text></View>
+          <Text style={styles.infoValue}>{profileData.phone}</Text>
+        </View>
+        <View style={styles.infoRow}>
+          <View style={{ flexDirection: 'row', alignItems: 'center' }}><Ionicons name="location-outline" size={16} color={muted} style={{ marginRight: 8 }} /><Text style={styles.infoLabel}>Address</Text></View>
+          <Text style={styles.infoValue}>{profileData.address}</Text>
+        </View>
+        <View style={[styles.infoRow, { borderBottomWidth: 0 }]}>
+          <View style={{ flexDirection: 'row', alignItems: 'center' }}><Ionicons name="calendar-outline" size={16} color={muted} style={{ marginRight: 8 }} /><Text style={styles.infoLabel}>Date of Birth</Text></View>
+          <Text style={styles.infoValue}>{profileData.dob}</Text>
+        </View>
       </Card>
 
       <Text style={styles.sectionHeader}>Medical Information</Text>
       <Card>
-        <View style={styles.infoRow}><Text style={styles.infoLabel}>Blood Type</Text><Text style={styles.infoValue}>O+</Text></View>
-        <View style={styles.infoRow}><Text style={styles.infoLabel}>Allergies</Text><Text style={styles.infoValue}>Penicillin, Peanuts</Text></View>
-        <View style={[styles.infoRow, { borderBottomWidth: 0, alignItems: 'flex-start' }]}><Text style={styles.infoLabel}>Emergency Contact</Text><Text style={styles.infoValue}>John Williams{'\n'}(555) 987-6543</Text></View>
+        <View style={styles.infoRow}>
+          <View style={{ flexDirection: 'row', alignItems: 'center' }}><Ionicons name="heart-outline" size={16} color={muted} style={{ marginRight: 8 }} /><Text style={styles.infoLabel}>Blood Type</Text></View>
+          <Text style={styles.infoValue}>{profileData.bloodType}</Text>
+        </View>
+        <View style={[styles.infoRow, { borderBottomWidth: 0 }]}>
+          <View style={{ flexDirection: 'row', alignItems: 'center' }}><Ionicons name="shield-outline" size={16} color={muted} style={{ marginRight: 8 }} /><Text style={styles.infoLabel}>Allergies</Text></View>
+          <Text style={styles.infoValue}>{profileData.allergies}</Text>
+        </View>
+      </Card>
+
+      <Text style={styles.sectionHeader}>Emergency Contact</Text>
+      <Card>
+        <View style={styles.infoRow}>
+          <View style={{ flexDirection: 'row', alignItems: 'center' }}><Ionicons name="person-outline" size={16} color={muted} style={{ marginRight: 8 }} /><Text style={styles.infoLabel}>Name</Text></View>
+          <Text style={styles.infoValue}>{profileData.emergencyName}</Text>
+        </View>
+        <View style={styles.infoRow}>
+          <View style={{ flexDirection: 'row', alignItems: 'center' }}><Ionicons name="people-outline" size={16} color={muted} style={{ marginRight: 8 }} /><Text style={styles.infoLabel}>Relationship</Text></View>
+          <Text style={styles.infoValue}>{profileData.emergencyRelationship}</Text>
+        </View>
+        <View style={styles.infoRow}>
+          <View style={{ flexDirection: 'row', alignItems: 'center' }}><Ionicons name="call-outline" size={16} color={muted} style={{ marginRight: 8 }} /><Text style={styles.infoLabel}>Phone</Text></View>
+          <Text style={styles.infoValue}>{profileData.emergencyPhone}</Text>
+        </View>
+        <View style={[styles.infoRow, { borderBottomWidth: 0 }]}>
+          <View style={{ flexDirection: 'row', alignItems: 'center' }}><Ionicons name="mail-outline" size={16} color={muted} style={{ marginRight: 8 }} /><Text style={styles.infoLabel}>Email</Text></View>
+          <Text style={styles.infoValue}>{profileData.emergencyEmail}</Text>
+        </View>
       </Card>
 
       <Text style={styles.sectionHeader}>Your Health Journey</Text>
@@ -1089,30 +1214,48 @@ export function ProfileScreen({ navigation }) {
   );
 }
 
-export function ReferralDetailsScreen({ navigation }) {
+export function ReferralDetailsScreen({ navigation, route }) {
+  const refData = route?.params?.referralData;
+  const title = refData?.title || 'Specialist Referral';
+  const subtitle = refData?.subtitle || 'Referred by Dr. Sofia Lim (Cardiologist)';
+  const reason = refData?.reason || 'Knee pain after exercise';
+  const date = refData?.date || 'February 10, 2026';
+  const actionType = refData?.actionType || 'BookSpecialist';
+
   return (
-    <Screen title="Referral Details" subtitle="Orthopedic surgeon referral" icon="git-branch-outline" navigation={navigation}>
+    <Screen title="Referral Details" subtitle={title} icon="git-branch-outline" navigation={navigation}>
       <Card style={[styles.card, styles.warningBorder]}>
         <View style={styles.rowBetween}>
-          <Text style={styles.largeTitle}>Specialist Referral</Text>
+          <Text style={styles.largeTitle}>{title.includes('GP Assessment') ? 'GP Assessment Request' : 'Specialist Referral'}</Text>
           <Pill label="Pending" color="#F59E0B" />
         </View>
-        <Text style={styles.bodyText}>Referred by Dr. Sofia Lim (Cardiologist)</Text>
+        <Text style={styles.bodyText}>{subtitle}</Text>
         <View style={styles.detailBlock}>
           <Text style={styles.detailLabel}>Reason</Text>
-          <Text style={styles.detailText}>Knee pain after exercise</Text>
+          <Text style={styles.detailText}>{reason}</Text>
         </View>
         <View style={styles.detailBlock}>
-          <Text style={styles.detailLabel}>Referral Date</Text>
-          <Text style={styles.detailText}>February 10, 2026</Text>
+          <Text style={styles.detailLabel}>{title.includes('GP Assessment') ? 'Assessment Date' : 'Referral Date'}</Text>
+          <Text style={styles.detailText}>{date}</Text>
         </View>
-        <PrimaryButton label="Book Appointment" icon="person-add" color="#F59E0B" onPress={() => navigation.navigate('Appointments')} />
+        <PrimaryButton 
+          label="Book Appointment" 
+          icon="person-add" 
+          color="#F59E0B" 
+          onPress={() => {
+            if (actionType === 'BookTherapy') navigation.navigate('BookTherapy', { preselectedTherapy: refData?.specialty });
+            else if (actionType === 'BookSpecialist') navigation.navigate('BookSpecialist', { preselectedDoctor: refData?.preselectedDoctor, preselectedSpecialty: refData?.specialty });
+            else navigation.navigate('BookSpecialist');
+          }} 
+        />
       </Card>
     </Screen>
   );
 }
 
-export function BookSpecialistScreen({ navigation }) {
+export function BookSpecialistScreen({ navigation, route }) {
+  const scrollViewRef = useRef(null);
+  const doctorLayouts = useRef({});
   const [step, setStep] = useState(0);
   const steps = ['Specialist', 'Payment', 'Schedule', 'Details', 'Review'];
   
@@ -1156,6 +1299,39 @@ export function BookSpecialistScreen({ navigation }) {
   // Step 5: Review
   const [showFullScreenImage, setShowFullScreenImage] = useState(false);
 
+  const doctors = [
+    { id: '1', name: 'Dr. Sofia Lim', status: 'Available', specialty: 'Cardiologist', clinic: 'OkieDoc+ Heart Center', location: 'BGC, Taguig City', exp: '20 years experience', price: 'From $75', hmo: true, ph: true, initial: 'SL' },
+    { id: '2', name: 'Dr. Carlos Torres', status: 'Available', specialty: 'Dermatologist', clinic: 'OkieDoc+ Skin Clinic', location: 'Ortigas, Pasig City', exp: '10 years experience', price: 'From $65', hmo: true, ph: false, initial: 'CT' },
+    { id: '3', name: 'Dr. Anna Cruz', status: 'Available', specialty: 'Psychiatrist', clinic: 'OkieDoc+ Mental Health Center', location: 'Manila', exp: '18 years experience', price: 'From $85', hmo: true, ph: true, initial: 'AC' },
+    { id: '4', name: 'Dr. Miguel Garcia', status: 'Available', specialty: 'Orthopedic Surgeon', clinic: 'OkieDoc+ Orthopedic Center', location: 'Makati City', exp: '22 years experience', price: 'From $95', hmo: true, ph: true, initial: 'MG' },
+    { id: '5', name: 'Dr. Isabel Reyes', status: 'Unavailable', specialty: 'Endocrinologist', clinic: 'OkieDoc+ Diabetes Center', location: 'Quezon City', exp: '15 years experience', price: 'From $80', hmo: false, ph: true, initial: 'IR' },
+    { id: '6', name: 'Dr. Ramon Santos', status: 'Available', specialty: 'Gastroenterologist', clinic: 'OkieDoc+ Digestive Health Center', location: 'Makati City', exp: '25 years experience', price: 'From $90', hmo: true, ph: true, initial: 'RS' },
+  ];
+
+  useEffect(() => {
+    if (route?.params?.preselectedDoctor || route?.params?.preselectedSpecialty) {
+      let doc;
+      if (route.params.preselectedDoctor) {
+        doc = doctors.find(d => d.name === route.params.preselectedDoctor);
+      } else if (route.params.preselectedSpecialty) {
+        doc = doctors.find(d => d.specialty.toLowerCase() === route.params.preselectedSpecialty.toLowerCase() || route.params.preselectedSpecialty.toLowerCase().includes(d.specialty.toLowerCase()));
+      }
+      if (doc) {
+        setSelectedDoctor(doc);
+        let attempts = 0;
+        const interval = setInterval(() => {
+          if (doctorLayouts.current[doc.id] !== undefined && scrollViewRef.current) {
+            scrollViewRef.current.scrollTo({ y: doctorLayouts.current[doc.id] - 20, animated: true });
+            clearInterval(interval);
+          }
+          attempts++;
+          if (attempts > 10) clearInterval(interval);
+        }, 50);
+      }
+      navigation.setParams({ preselectedDoctor: undefined, preselectedSpecialty: undefined });
+    }
+  }, [route?.params?.preselectedDoctor, route?.params?.preselectedSpecialty, navigation]);
+
   useEffect(() => {
     const unsubscribe = navigation.addListener('blur', () => {
       setStep(0);
@@ -1194,15 +1370,6 @@ export function BookSpecialistScreen({ navigation }) {
     }
   };
 
-  const doctors = [
-    { id: '1', name: 'Dr. Sofia Lim', status: 'Available', specialty: 'Cardiologist', clinic: 'OkieDoc+ Heart Center', location: 'BGC, Taguig City', exp: '20 years experience', price: 'From $75', hmo: true, ph: true, initial: 'SL' },
-    { id: '2', name: 'Dr. Carlos Torres', status: 'Available', specialty: 'Dermatologist', clinic: 'OkieDoc+ Skin Clinic', location: 'Ortigas, Pasig City', exp: '10 years experience', price: 'From $65', hmo: true, ph: false, initial: 'CT' },
-    { id: '3', name: 'Dr. Anna Cruz', status: 'Available', specialty: 'Psychiatrist', clinic: 'OkieDoc+ Mental Health Center', location: 'Manila', exp: '18 years experience', price: 'From $85', hmo: true, ph: true, initial: 'AC' },
-    { id: '4', name: 'Dr. Miguel Garcia', status: 'Available', specialty: 'Orthopedic Surgeon', clinic: 'OkieDoc+ Orthopedic Center', location: 'Makati City', exp: '22 years experience', price: 'From $95', hmo: true, ph: true, initial: 'MG' },
-    { id: '5', name: 'Dr. Isabel Reyes', status: 'Unavailable', specialty: 'Endocrinologist', clinic: 'OkieDoc+ Diabetes Center', location: 'Quezon City', exp: '15 years experience', price: 'From $80', hmo: false, ph: true, initial: 'IR' },
-    { id: '6', name: 'Dr. Ramon Santos', status: 'Available', specialty: 'Gastroenterologist', clinic: 'OkieDoc+ Digestive Health Center', location: 'Makati City', exp: '25 years experience', price: 'From $90', hmo: true, ph: true, initial: 'RS' },
-  ];
-
   const hmoList = ['Maxicare', 'Medicard', 'PhilCare', 'Intellicare', 'Cocolife', 'Avega', 'Pacific Cross', 'AsianLife', 'Insular Health care', 'Others'];
   const times = ['09:00 AM', '10:00 AM', '11:00 AM', '01:00 PM', '02:00 PM', '03:00 PM', '04:00 PM'];
   const symptomsList = ['Pain', 'Swelling', 'Fatigue', 'Numbness', 'Weakness', 'Dizziness', 'Nausea', 'Loss of Appetite', 'Sleep Issues', 'Anxiety'];
@@ -1228,10 +1395,11 @@ export function BookSpecialistScreen({ navigation }) {
   return (
     <SafeAreaView style={styles.safeArea}>
       <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
-      <Header title="Book Specialist Consultation" subtitle="Connect with specialized medical experts for your specific needs" icon="person-add-outline" navigation={navigation} />
-      
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={[styles.content, { paddingBottom: 100 }]}>
+      <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+        <Header title="Book Specialist Consultation" subtitle="Connect with specialized medical experts for your specific needs" icon="person-add-outline" navigation={navigation} />
         
+        <ScrollView ref={scrollViewRef} showsVerticalScrollIndicator={false} contentContainerStyle={[styles.content, { paddingBottom: 100 }]} keyboardShouldPersistTaps="handled">
+          
         {/* Pagination Control */}
         <Card style={{ paddingVertical: 16, marginBottom: 20 }}>
           <View style={{ flexDirection: 'row', justifyContent: 'space-between', position: 'relative' }}>
@@ -1256,6 +1424,9 @@ export function BookSpecialistScreen({ navigation }) {
             {doctors.map(doc => (
               <TouchableOpacity 
                 key={doc.id} 
+                onLayout={(event) => {
+                  doctorLayouts.current[doc.id] = event.nativeEvent.layout.y;
+                }}
                 style={[styles.card, selectedDoctor?.id === doc.id && { borderColor: '#7C3AED', borderWidth: 2, backgroundColor: '#F5F3FF' }, doc.status === 'Unavailable' && { opacity: 0.6 }]}
                 onPress={() => {
                   if (doc.status === 'Available') {
@@ -1420,14 +1591,17 @@ export function BookSpecialistScreen({ navigation }) {
                     </View>
 
                     <Text style={styles.inputLabel}>Do you have a valid referral? *</Text>
-                    <View style={{ flexDirection: 'row', gap: 12, marginBottom: hasReferral === null ? 6 : 16 }}>
-                      <TouchableOpacity style={{ flex: 1, height: 44, borderRadius: 8, alignItems: 'center', justifyContent: 'center', backgroundColor: hasReferral === true ? '#10B981' : '#F1F5F9', borderWidth: hasReferral === null ? 1 : 0, borderColor: '#EF4444' }} onPress={() => setHasReferral(true)}>
-                        <Text style={{ color: hasReferral === true ? '#FFFFFF' : '#64748B', fontWeight: '700', fontSize: 13 }}>Yes, I have a referral</Text>
-                      </TouchableOpacity>
-                      <TouchableOpacity style={{ flex: 1, height: 44, borderRadius: 8, alignItems: 'center', justifyContent: 'center', backgroundColor: hasReferral === false ? '#94A3B8' : '#F1F5F9', borderWidth: hasReferral === null ? 1 : 0, borderColor: '#EF4444' }} onPress={() => setHasReferral(false)}>
-                        <Text style={{ color: hasReferral === false ? '#FFFFFF' : '#64748B', fontWeight: '700', fontSize: 13 }}>No Referral</Text>
-                      </TouchableOpacity>
-                    </View>
+                    
+                    <TouchableOpacity style={{ backgroundColor: '#FFFFFF', padding: 12, marginBottom: 8, borderRadius: 8, borderColor: hasReferral === true ? '#10B981' : '#E2E8F0', borderWidth: 2, flexDirection: 'row', alignItems: 'center' }} onPress={() => setHasReferral(true)}>
+                       <Ionicons name={hasReferral === true ? 'radio-button-on' : 'radio-button-off'} size={20} color={hasReferral === true ? '#10B981' : muted} style={{ marginRight: 8 }} />
+                       <Text style={{ color: hasReferral === true ? '#10B981' : ink, fontWeight: '700', fontSize: 13 }}>Yes, I have a referral</Text>
+                    </TouchableOpacity>
+                    
+                    <TouchableOpacity style={{ backgroundColor: '#FFFFFF', padding: 12, marginBottom: hasReferral === null ? 6 : 16, borderRadius: 8, borderColor: hasReferral === false ? '#10B981' : '#E2E8F0', borderWidth: 2, flexDirection: 'row', alignItems: 'center' }} onPress={() => setHasReferral(false)}>
+                       <Ionicons name={hasReferral === false ? 'radio-button-on' : 'radio-button-off'} size={20} color={hasReferral === false ? '#10B981' : muted} style={{ marginRight: 8 }} />
+                       <Text style={{ color: hasReferral === false ? '#10B981' : ink, fontWeight: '700', fontSize: 13 }}>No Referral</Text>
+                    </TouchableOpacity>
+
                     {hasReferral === null && (
                       <Text style={{ color: '#EF4444', fontSize: 12, marginBottom: 16 }}>Please indicate if you have a referral.</Text>
                     )}
@@ -1686,7 +1860,7 @@ export function BookSpecialistScreen({ navigation }) {
             </Card>
           </>
         )}
-      </ScrollView>
+        </ScrollView>
 
       {/* Bottom Sticky Navigation */}
       <View style={{ position: 'absolute', bottom: 0, left: 0, right: 0, paddingHorizontal: 16, paddingVertical: 16, backgroundColor: '#FFFFFF', borderTopWidth: 1, borderTopColor: '#E2E8F0', flexDirection: 'row', justifyContent: 'space-between' }}>
@@ -1758,9 +1932,10 @@ export function BookSpecialistScreen({ navigation }) {
           >
             <Ionicons name="close" size={32} color="#FFFFFF" />
           </TouchableOpacity>
-          <Image source={{ uri: hmoCardImage }} style={{ width: '100%', height: '80%' }} resizeMode="contain" />
+          {hmoCardImage && <Image source={{ uri: hmoCardImage }} style={{ width: '100%', height: '80%' }} resizeMode="contain" />}
         </View>
       </Modal>
+      </KeyboardAvoidingView>
     </SafeAreaView>
   );
 }
@@ -1806,6 +1981,23 @@ export function BookTherapyScreen({ navigation }) {
   // Step 6: Payment
   const [therapyPayment, setTherapyPayment] = useState(null);
 
+  const therapyTypes = [
+    { id: 'PT', title: 'Physical Therapy', sub: 'Rehabilitation for injuries, pain management, and mobility improvement', time: '45-60 mins' },
+    { id: 'OT', title: 'Occupational Therapy', sub: 'Help with daily activities, fine motor skills, and adaptive strategies', time: '45-60 mins' },
+    { id: 'ST', title: 'Speech Therapy', sub: 'Communication, language, and swallowing disorders treatment', time: '30-45 mins' }
+  ];
+
+  useEffect(() => {
+    if (route?.params?.preselectedTherapy) {
+      const requestedType = route.params.preselectedTherapy.toLowerCase();
+      const matchedType = therapyTypes.find(t => requestedType.includes(t.title.toLowerCase()) || t.title.toLowerCase().includes(requestedType));
+      if (matchedType) {
+        setTherapyType(matchedType);
+      }
+      navigation.setParams({ preselectedTherapy: undefined });
+    }
+  }, [route?.params?.preselectedTherapy, navigation]);
+
   useEffect(() => {
     const unsubscribe = navigation.addListener('blur', () => {
       setStep(0);
@@ -1844,12 +2036,6 @@ export function BookTherapyScreen({ navigation }) {
     if (!result.canceled) setReferralDoc(result.assets[0].uri);
   };
 
-  const therapyTypes = [
-    { id: 'PT', title: 'Physical Therapy', sub: 'Rehabilitation for injuries, pain management, and mobility improvement', time: '45-60 mins' },
-    { id: 'OT', title: 'Occupational Therapy', sub: 'Help with daily activities, fine motor skills, and adaptive strategies', time: '45-60 mins' },
-    { id: 'ST', title: 'Speech Therapy', sub: 'Communication, language, and swallowing disorders treatment', time: '30-45 mins' }
-  ];
-
   const getTherapistsList = () => {
     if (therapyType?.id === 'OT') {
       return [
@@ -1877,21 +2063,22 @@ export function BookTherapyScreen({ navigation }) {
   return (
     <SafeAreaView style={styles.safeArea}>
       <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
-      <View style={styles.header}>
-        <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
-          <Ionicons name="chevron-back" size={23} color={ink} />
-        </TouchableOpacity>
-        <View style={[styles.headerIcon, { backgroundColor: '#10B981' }]}>
-          <Ionicons name="heart" size={22} color="#FFFFFF" />
+      <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+        <View style={styles.header}>
+          <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
+            <Ionicons name="chevron-back" size={23} color={ink} />
+          </TouchableOpacity>
+          <View style={[styles.headerIcon, { backgroundColor: '#10B981' }]}>
+            <Ionicons name="heart" size={22} color="#FFFFFF" />
+          </View>
+          <View style={styles.headerCopy}>
+            <Text style={styles.headerTitle}>Book Therapy Session</Text>
+            <Text style={styles.headerSubtitle}>Schedule your rehabilitation therapy</Text>
+          </View>
         </View>
-        <View style={styles.headerCopy}>
-          <Text style={styles.headerTitle}>Book Therapy Session</Text>
-          <Text style={styles.headerSubtitle}>Schedule your rehabilitation therapy</Text>
-        </View>
-      </View>
-      
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={[styles.content, { paddingBottom: 100 }]}>
         
+        <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={[styles.content, { paddingBottom: 100 }]} keyboardShouldPersistTaps="handled">
+          
         {/* Pagination Control */}
         <Card style={{ paddingVertical: 16, marginBottom: 20 }}>
           <View style={{ flexDirection: 'row', justifyContent: 'space-between', position: 'relative', paddingHorizontal: 5 }}>
@@ -2341,8 +2528,8 @@ export function BookTherapyScreen({ navigation }) {
             </Card>
           </>
         )}
-
-      </ScrollView>
+        
+        </ScrollView>
 
       {/* Bottom Sticky Navigation */}
       <View style={{ position: 'absolute', bottom: 0, left: 0, right: 0, paddingHorizontal: 16, paddingVertical: 16, backgroundColor: '#FFFFFF', borderTopWidth: 1, borderTopColor: '#E2E8F0', flexDirection: 'row', justifyContent: 'space-between' }}>
@@ -2366,6 +2553,18 @@ export function BookTherapyScreen({ navigation }) {
           <TouchableOpacity 
             style={{ height: 48, paddingHorizontal: 32, borderRadius: 8, backgroundColor: '#10B981', alignItems: 'center', justifyContent: 'center' }}
             onPress={() => {
+              const newAppt = {
+                id: Date.now().toString(),
+                doctor: therapist?.name,
+                specialty: therapist?.spec,
+                status: therapyPayment === 'HMO' ? 'Pending' : 'Confirmed',
+                date: selectedTherapyDate,
+                time: selectedTherapyTime,
+                type: therapyType?.title || 'Therapy Session',
+                color: therapyPayment === 'HMO' ? '#F59E0B' : '#10B981',
+                actions: ['Message']
+              };
+
               setStep(0);
               setTherapyType(null);
               setTherapist(null);
@@ -2383,13 +2582,14 @@ export function BookTherapyScreen({ navigation }) {
               setTherapyNotes('');
               setTherapyPayment(null);
               
-              navigation.navigate('PhysicalTherapy');
+              navigation.navigate('Appointments', { newAppointment: newAppt });
             }}
           >
             <Text style={{ color: '#FFFFFF', fontSize: 14, fontWeight: '700' }}>Confirm Booking</Text>
           </TouchableOpacity>
         )}
       </View>
+      </KeyboardAvoidingView>
     </SafeAreaView>
   );
 }
@@ -2505,10 +2705,11 @@ export function BookPhysicalScreen({ navigation }) {
   return (
     <SafeAreaView style={styles.safeArea}>
       <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
-      <Header title="Book Physical Consultation" subtitle="Schedule an in-person appointment with our healthcare professionals" icon="calendar-outline" navigation={navigation} />
-      
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={[styles.content, { paddingBottom: 100 }]}>
+      <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+        <Header title="Book Physical Consultation" subtitle="Schedule an in-person appointment with our healthcare professionals" icon="calendar-outline" navigation={navigation} />
         
+        <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={[styles.content, { paddingBottom: 100 }]} keyboardShouldPersistTaps="handled">
+          
         {/* Pagination Control */}
         <Card style={{ paddingVertical: 16, marginBottom: 20 }}>
           <View style={{ flexDirection: 'row', justifyContent: 'space-between', position: 'relative' }}>
@@ -2866,8 +3067,8 @@ export function BookPhysicalScreen({ navigation }) {
             </Card>
           </>
         )}
-
-      </ScrollView>
+        
+        </ScrollView>
 
       {/* Bottom Sticky Navigation */}
       <View style={{ position: 'absolute', bottom: 0, left: 0, right: 0, paddingHorizontal: 16, paddingVertical: 16, backgroundColor: '#FFFFFF', borderTopWidth: 1, borderTopColor: '#E2E8F0', flexDirection: 'row', justifyContent: 'space-between' }}>
@@ -2927,6 +3128,7 @@ export function BookPhysicalScreen({ navigation }) {
           </TouchableOpacity>
         )}
       </View>
+      </KeyboardAvoidingView>
     </SafeAreaView>
   );
 }
@@ -3125,7 +3327,25 @@ export function ConsultationIntakeScreen({ navigation, route }) {
         </View>
 
         <View style={{ paddingTop: 20, borderTopWidth: 1, borderTopColor: '#E2E8F0', marginTop: 8 }}>
-          <PrimaryButton label="Proceed to Consultation" disabled={isProceedDisabled} color={isProceedDisabled ? '#CBD5E1' : cyan} onPress={() => navigation.navigate('Appointments')} />
+          <PrimaryButton 
+            label="Proceed to Consultation" 
+            disabled={isProceedDisabled} 
+            color={isProceedDisabled ? '#CBD5E1' : cyan} 
+            onPress={() => {
+              const newAppt = {
+                id: Date.now().toString(),
+                doctor: 'Dr. Sarah Johnson',
+                specialty: 'Family Medicine',
+                status: 'Confirmed',
+                date: new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }),
+                time: 'In ~10 mins',
+                type: consultationType,
+                color: '#089FB4',
+                actions: ['Join Call', 'Message']
+              };
+              navigation.navigate('Appointments', { newAppointment: newAppt });
+            }} 
+          />
           <TouchableOpacity style={{ alignItems: 'center', marginTop: 16 }} onPress={() => navigation.goBack()}>
             <Text style={{ color: muted, fontSize: 14, fontWeight: '700' }}>Save for Later</Text>
           </TouchableOpacity>
@@ -3133,6 +3353,203 @@ export function ConsultationIntakeScreen({ navigation, route }) {
         </View>
       </ScrollView>
     </SafeAreaView>
+  );
+}
+
+export function RequestReferralScreen({ navigation, route }) {
+  const initialSpecialty = route.params?.targetSpecialty || '';
+  const [specialty, setSpecialty] = useState(initialSpecialty);
+  const [reason, setReason] = useState('');
+
+  // Calendar & Scheduling State
+  const [selectedDate, setSelectedDate] = useState('');
+  const [selectedTime, setSelectedTime] = useState(null);
+  const [viewDate, setViewDate] = useState(new Date());
+  const [showMonthYearPicker, setShowMonthYearPicker] = useState(false);
+  const [pickerYear, setPickerYear] = useState(new Date().getFullYear());
+
+  const handlePrevMonth = () => setViewDate(prev => new Date(prev.getFullYear(), prev.getMonth() - 1, 1));
+  const handleNextMonth = () => setViewDate(prev => new Date(prev.getFullYear(), prev.getMonth() + 1, 1));
+
+  const monthNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+  const currentMonthName = monthNames[viewDate.getMonth()];
+  const currentYear = viewDate.getFullYear();
+  const daysInMonth = new Date(currentYear, viewDate.getMonth() + 1, 0).getDate();
+  const firstDay = new Date(currentYear, viewDate.getMonth(), 1).getDay();
+  const availableTimes = ['09:00 AM', '10:00 AM', '11:00 AM', '01:00 PM', '02:00 PM', '03:30 PM', '04:00 PM'];
+
+  const quickSpecialties = ['Cardiologist', 'Dermatologist', 'Orthopedic Surgeon', 'Psychiatrist', 'Physical Therapy'];
+  
+  const isSubmitDisabled = !reason.trim() || !specialty.trim() || !selectedDate || !selectedTime;
+
+  return (
+    <Screen title="Request Referral" subtitle="Get a medical referral for a specialist or therapy" icon="document-text-outline" navigation={navigation}>
+      
+      {/* Explanation Box to avoid user confusion */}
+      <View style={{ backgroundColor: '#F0FDF4', padding: 16, borderRadius: 12, borderWidth: 1, borderColor: '#BBF7D0', marginBottom: 20 }}>
+        <Text style={{ color: '#166534', fontWeight: '800', fontSize: 15, marginBottom: 10 }}>How getting a referral works</Text>
+        <View style={{ flexDirection: 'row', marginBottom: 8, paddingRight: 10 }}>
+          <Ionicons name="checkmark-circle" size={16} color="#10B981" style={{ marginRight: 8, marginTop: 2 }} />
+          <Text style={{ color: '#15803D', fontSize: 13, lineHeight: 18 }}>You need an official medical referral to proceed with HMO or PhilHealth coverage.</Text>
+        </View>
+        <View style={{ flexDirection: 'row', marginBottom: 8, paddingRight: 10 }}>
+          <Ionicons name="checkmark-circle" size={16} color="#10B981" style={{ marginRight: 8, marginTop: 2 }} />
+          <Text style={{ color: '#15803D', fontSize: 13, lineHeight: 18 }}>Tell us what specialist you need and why.</Text>
+        </View>
+        <View style={{ flexDirection: 'row', paddingRight: 10 }}>
+          <Ionicons name="checkmark-circle" size={16} color="#10B981" style={{ marginRight: 8, marginTop: 2 }} />
+          <Text style={{ color: '#15803D', fontSize: 13, lineHeight: 18 }}>Schedule a brief video assessment with a General Physician to issue your referral.</Text>
+        </View>
+      </View>
+
+      <Card>
+        <Text style={styles.inputLabel}>Which specialist or therapy do you need? *</Text>
+        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 12 }}>
+          {quickSpecialties.map(s => (
+            <TouchableOpacity 
+              key={s} 
+              style={{ paddingHorizontal: 12, paddingVertical: 8, borderRadius: 16, borderWidth: 1, borderColor: specialty === s ? cyan : '#E2E8F0', backgroundColor: specialty === s ? cyan : '#F8FAFC' }}
+              onPress={() => setSpecialty(s)}
+            >
+              <Text style={{ color: specialty === s ? '#FFFFFF' : muted, fontSize: 12, fontWeight: '600' }}>{s}</Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+        <TextInput 
+          style={[styles.textInput, { marginBottom: 16 }]} 
+          placeholder="Or type specialist name here..." 
+          placeholderTextColor="#94A3B8" 
+          value={specialty}
+          onChangeText={setSpecialty}
+        />
+
+        <Text style={styles.inputLabel}>Why do you need this referral? *</Text>
+        <TextInput 
+          style={[styles.textInput, { height: 100, paddingTop: 12, marginBottom: 20 }]} 
+          placeholder="Briefly describe your symptoms or reason..." 
+          placeholderTextColor="#94A3B8" 
+          multiline 
+          value={reason}
+          onChangeText={setReason}
+        />
+
+        <Text style={[styles.inputLabel, { marginBottom: 12 }]}>Schedule GP Assessment *</Text>
+        <View style={{ borderWidth: 1, borderColor: '#E2E8F0', borderRadius: 12, padding: 12, marginBottom: 16, backgroundColor: '#FFFFFF' }}>
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+            <TouchableOpacity onPress={handlePrevMonth}><Ionicons name="chevron-back" size={20} color={muted} /></TouchableOpacity>
+            <TouchableOpacity onPress={() => { setPickerYear(viewDate.getFullYear()); setShowMonthYearPicker(true); }} style={{ flexDirection: 'row', alignItems: 'center' }}>
+              <Text style={{ fontSize: 15, fontWeight: '700', color: ink, marginRight: 4 }}>{currentMonthName} {currentYear}</Text>
+              <Ionicons name="caret-down" size={14} color={ink} />
+            </TouchableOpacity>
+            <TouchableOpacity onPress={handleNextMonth}><Ionicons name="chevron-forward" size={20} color={muted} /></TouchableOpacity>
+          </View>
+          <View style={{ flexDirection: 'row', justifyContent: 'space-around', marginBottom: 8 }}>
+            {['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'].map(day => (
+              <Text key={day} style={{ width: 32, textAlign: 'center', color: muted, fontSize: 12, fontWeight: '600' }}>{day}</Text>
+            ))}
+          </View>
+          <View style={{ flexDirection: 'row', flexWrap: 'wrap' }}>
+            {Array.from({ length: firstDay }).map((_, i) => (
+              <View key={`empty-${i}`} style={{ width: '14.28%', height: 40 }} />
+            ))}
+            {Array.from({ length: daysInMonth }).map((_, i) => {
+              const day = i + 1;
+              const dateStr = `${currentMonthName} ${day}, ${currentYear}`;
+              const isSelected = selectedDate === dateStr;
+              return (
+                <TouchableOpacity 
+                  key={day}
+                  style={{ width: '14.28%', height: 40, alignItems: 'center', justifyContent: 'center' }}
+                  onPress={() => setSelectedDate(dateStr)}
+                >
+                  <View style={{ width: 32, height: 32, borderRadius: 16, backgroundColor: isSelected ? cyan : 'transparent', alignItems: 'center', justifyContent: 'center' }}>
+                    <Text style={{ color: isSelected ? '#FFFFFF' : ink, fontSize: 14, fontWeight: isSelected ? '700' : '500' }}>{day}</Text>
+                  </View>
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+        </View>
+
+        {selectedDate?.length > 0 && (
+          <>
+            <Text style={[styles.cardTitle, { marginTop: 4, marginBottom: 12 }]}>Available Times</Text>
+            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 10 }}>
+              {availableTimes.map((t, idx) => (
+                <TouchableOpacity 
+                  key={idx} 
+                  style={{ width: '31%', paddingVertical: 12, borderRadius: 8, borderWidth: 1, borderColor: selectedTime === t ? cyan : '#E2E8F0', backgroundColor: selectedTime === t ? '#E8F6FA' : '#F8FAFC', alignItems: 'center' }}
+                  onPress={() => setSelectedTime(t)}
+                >
+                  <Text style={{ color: selectedTime === t ? cyan : ink, fontWeight: '700', fontSize: 12 }}>{t}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          </>
+        )}
+      </Card>
+
+      <View style={{ paddingTop: 20, borderTopWidth: 1, borderTopColor: '#E2E8F0', marginTop: 8 }}>
+        <PrimaryButton 
+          label="Submit Referral Request" 
+          disabled={isSubmitDisabled} 
+          color={isSubmitDisabled ? '#CBD5E1' : cyan} 
+          onPress={() => {
+            const isTherapy = specialty.toLowerCase().includes('therapy');
+            const newReq = {
+              id: Date.now().toString(),
+              title: `Referral to ${specialty}`,
+              subtitle: 'Requested via Referral Form',
+              reason: reason,
+              date: selectedDate,
+              actionType: isTherapy ? 'BookTherapy' : 'BookSpecialist',
+              specialty: specialty
+            };
+            
+            navigation.navigate('Dashboard', { newReferralRequest: newReq });
+          }} 
+        />
+      </View>
+
+      <Modal visible={showMonthYearPicker} transparent={true} animationType="fade" onRequestClose={() => setShowMonthYearPicker(false)}>
+        <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', alignItems: 'center', padding: 20 }}>
+          <View style={{ backgroundColor: '#FFFFFF', borderRadius: 16, padding: 20, width: '100%', maxWidth: 340, shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.2, shadowRadius: 10, elevation: 5 }}>
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
+              <TouchableOpacity onPress={() => setPickerYear(prev => prev - 1)} style={{ padding: 8 }}>
+                <Ionicons name="chevron-back" size={24} color={ink} />
+              </TouchableOpacity>
+              <Text style={{ fontSize: 18, fontWeight: '800', color: ink }}>{pickerYear}</Text>
+              <TouchableOpacity onPress={() => setPickerYear(prev => prev + 1)} style={{ padding: 8 }}>
+                <Ionicons name="chevron-forward" size={24} color={ink} />
+              </TouchableOpacity>
+            </View>
+            <View style={{ flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between' }}>
+              {monthNames.map((month, index) => {
+                const isSelected = viewDate.getMonth() === index && viewDate.getFullYear() === pickerYear;
+                return (
+                  <TouchableOpacity
+                    key={month}
+                    style={{ width: '30%', paddingVertical: 12, alignItems: 'center', borderRadius: 8, backgroundColor: isSelected ? cyan : '#F8FAFC', borderWidth: 1, borderColor: isSelected ? cyan : '#E2E8F0', marginBottom: 10 }}
+                    onPress={() => {
+                      setViewDate(new Date(pickerYear, index, 1));
+                      setShowMonthYearPicker(false);
+                    }}
+                  >
+                    <Text style={{ color: isSelected ? '#FFFFFF' : ink, fontWeight: isSelected ? '700' : '500', fontSize: 13 }}>{month.substring(0, 3)}</Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+            <TouchableOpacity
+              style={{ marginTop: 10, paddingVertical: 12, alignItems: 'center', backgroundColor: '#F1F5F9', borderRadius: 8 }}
+              onPress={() => setShowMonthYearPicker(false)}
+            >
+              <Text style={{ color: muted, fontWeight: '700', fontSize: 14 }}>Cancel</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+    </Screen>
   );
 }
 
@@ -3150,8 +3567,41 @@ export function MessagesScreen({ navigation, route }) {
     if (route?.params?.chatId) {
       setActiveChatId(route.params.chatId);
       navigation.setParams({ chatId: undefined }); // Clear param so back navigation works smoothly
+    } else if (route?.params?.doctorName) {
+      const docName = route.params.doctorName;
+      setConversations(prev => {
+        const existingChat = prev.find(c => c.name === docName);
+        if (existingChat) {
+          setTimeout(() => setActiveChatId(existingChat.id), 0);
+          return prev;
+        }
+        
+        const newChatId = Date.now().toString();
+        let initials = 'DR';
+        const nameParts = docName.split(' ').filter(w => !w.toLowerCase().includes('dr') && !w.toLowerCase().includes('dr.'));
+        if (nameParts.length >= 2) {
+          initials = (nameParts[0][0] + nameParts[1][0]).toUpperCase();
+        } else if (nameParts.length === 1) {
+          initials = nameParts[0].substring(0, 2).toUpperCase();
+        }
+
+        const newChat = {
+          id: newChatId,
+          name: docName,
+          role: 'Physician',
+          avatar: initials,
+          color: '#089FB4',
+          unread: 0,
+          isTyping: false,
+          messages: [{ id: Date.now().toString(), sender: docName, text: 'Hello! How can I help you today?', time: 'Just now' }]
+        };
+        
+        setTimeout(() => setActiveChatId(newChatId), 0);
+        return [newChat, ...prev];
+      });
+      navigation.setParams({ doctorName: undefined });
     }
-  }, [route?.params?.chatId]);
+  }, [route?.params?.chatId, route?.params?.doctorName, navigation]);
 
   const [conversations, setConversations] = useState([
     {
@@ -3990,7 +4440,10 @@ export function MedicalRecordsScreen({ navigation }) {
                 </View>
                 <View style={{ flexDirection: 'row', gap: 8, marginTop: 16 }}>
                   {item.status === 'Pending' && (
-                    <TouchableOpacity style={[{ backgroundColor: '#F59E0B', borderRadius: 8, justifyContent: 'center', alignItems: 'center', paddingHorizontal: 16, height: 36, flex: 1 }]}>
+                    <TouchableOpacity 
+                      style={[{ backgroundColor: '#F59E0B', borderRadius: 8, justifyContent: 'center', alignItems: 'center', paddingHorizontal: 16, height: 36, flex: 1 }]}
+                      onPress={() => navigation.navigate('BookSpecialist', { preselectedDoctor: item.referredTo })}
+                    >
                       <Text style={{ color: '#FFFFFF', fontSize: 13, fontWeight: '700' }}>Book Appointment</Text>
                     </TouchableOpacity>
                   )}

@@ -28,6 +28,7 @@ import {
   BookTherapyScreen,
   BookPhysicalScreen,
   ConsultationIntakeScreen,
+  RequestReferralScreen,
 } from './PatientFlowScreens';
 
 const Tab = createBottomTabNavigator();
@@ -103,6 +104,7 @@ function MainTabs() {
       <Tab.Screen name="BookTherapy" component={BookTherapyScreen} />
       <Tab.Screen name="BookPhysical" component={BookPhysicalScreen} />
       <Tab.Screen name="ConsultationIntake" component={ConsultationIntakeScreen} />
+      <Tab.Screen name="RequestReferral" component={RequestReferralScreen} />
       <Tab.Screen name="Invoice" component={InvoiceScreen} />
       <Tab.Screen name="PaymentSuccess" component={PaymentSuccessScreen} />
       <Tab.Screen name="EditProfile" component={EditProfileScreen} />
