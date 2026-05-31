@@ -11,10 +11,13 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 
+import { API_URL, currentUser } from './config';
+
 export default function DashboardScreen({ navigation, route }) {
-  const [pendingReferrals, setPendingReferrals] = useState([
+  const isMockUser = true; // Enabled for testing with any user account
+
+  const [pendingReferrals, setPendingReferrals] = useState(isMockUser ? [
     {
-      id: '1',
       title: 'Specialist Referral - Orthopedic Surgeon',
       subtitle: 'Referred by Dr. Sofia Lim (Cardiologist)',
       reason: 'Knee pain after exercise',
@@ -22,11 +25,47 @@ export default function DashboardScreen({ navigation, route }) {
       actionType: 'BookSpecialist',
       preselectedDoctor: 'Dr. Miguel Garcia'
     }
-  ]);
+  ] : []);
 
+  // Fetch initial referrals from the Sails backend when Dashboard loads
+  useEffect(() => {
+    if (!currentUser?.id) return;
+    fetch(`${API_URL}/referral?user=${currentUser.id}`)
+      .then(async (res) => {
+        if (!res.ok) {
+          const errText = await res.text();
+          throw new Error(`HTTP ${res.status} - ${errText}`);
+        }
+        return res.json();
+      })
+      .then((data) => {
+        if (data && data.length > 0) {
+          // Sort so the newest referrals show up at the top
+          const sortedData = data.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+          setPendingReferrals(sortedData);
+        }
+      })
+      .catch((err) => console.error('Error fetching referrals from API:', err));
+  }, [currentUser?.id]);
+
+  // Handle newly requested referrals navigating back to the Dashboard
   useEffect(() => {
     if (route?.params?.newReferralRequest) {
-      setPendingReferrals(prev => [route.params.newReferralRequest, ...prev]);
+      // Post the new referral to the database
+      fetch(`${API_URL}/referral`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          ...route.params.newReferralRequest,
+          user: String(currentUser?.id)
+        }),
+      })
+        .then((res) => res.json())
+        .then((newReferral) => {
+          setPendingReferrals((prev) => [newReferral, ...prev]);
+        })
+        .catch((err) => console.error('Error posting new referral:', err));
+
       navigation.setParams({ newReferralRequest: undefined });
     }
   }, [route?.params?.newReferralRequest, navigation]);
@@ -35,31 +74,32 @@ export default function DashboardScreen({ navigation, route }) {
     <SafeAreaView style={styles.safeArea}>
       <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
       
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
-        {/* Custom Header */}
-        <View style={styles.header}>
-          <View style={styles.logoContainer}>
-            <View style={styles.logoCircle}>
-              <Text style={styles.logoIconText}>O+</Text>
-            </View>
-            <View>
-              <Text style={styles.logoTitle}>OkieDoc+</Text>
-              <Text style={styles.logoSubtitle}>Your Health Partner</Text>
-            </View>
+      {/* Custom Header (Sticky) */}
+      <View style={styles.header}>
+        <View style={styles.logoContainer}>
+          <View style={styles.logoCircle}>
+            <Text style={styles.logoIconText}>O+</Text>
           </View>
-          <TouchableOpacity style={styles.bellIcon}>
-            <Ionicons name="notifications-outline" size={20} color="#0F172A" />
-            <View style={styles.notificationBadge}>
-              <Text style={styles.badgeText}>3</Text>
-            </View>
-          </TouchableOpacity>
+          <View>
+            <Text style={styles.logoTitle}>OkieDoc+</Text>
+            <Text style={styles.logoSubtitle}>Your Health Partner</Text>
+          </View>
         </View>
+        <TouchableOpacity style={styles.bellIcon}>
+          <Ionicons name="notifications-outline" size={20} color="#0F172A" />
+          <View style={styles.notificationBadge}>
+            <Text style={styles.badgeText}>3</Text>
+          </View>
+        </TouchableOpacity>
+      </View>
+
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
         
         {/* --- HERO SECTION --- */}
         <View style={styles.heroSection}>
           {/* Greeting */}
           <View style={styles.greetingContainer}>
-            <Text style={styles.greetingText}>Good afternoon, Sarah 👋</Text>
+            <Text style={styles.greetingText}>Good afternoon, {currentUser?.firstName || 'Sarah'} 👋</Text>
             <Text style={styles.subGreetingText}>How can we help you today?</Text>
           </View>
 
@@ -94,34 +134,36 @@ export default function DashboardScreen({ navigation, route }) {
         <View style={styles.mainContent}>
           
           {/* Next Appointment Card */}
-          <View style={styles.card}>
-            <View style={styles.cardHeader}>
-              <View style={styles.badgeContainer}>
-                <Text style={styles.badgeTextCyan}>Today</Text>
-              </View>
-              <Text style={styles.cardSubTitle}>Next Appointment</Text>
-            </View>
-            
-            <View style={styles.appointmentRow}>
-              <View style={styles.appointmentInfo}>
-                <Text style={styles.doctorName}>Dr. Sarah Johnson</Text>
-                <Text style={styles.specialtyText}>Family Medicine</Text>
-                <View style={styles.timeRow}>
-                  <Ionicons name="time-outline" size={14} color="#64748B" />
-                  <Text style={styles.timeText}>2:30 PM</Text>
-                  <Ionicons name="videocam-outline" size={14} color="#64748B" style={{marginLeft: 8}} />
-                  <Text style={styles.timeText}>Video Consultation</Text>
+          {isMockUser && (
+            <View style={styles.card}>
+              <View style={styles.cardHeader}>
+                <View style={styles.badgeContainer}>
+                  <Text style={styles.badgeTextCyan}>Today</Text>
                 </View>
+                <Text style={styles.cardSubTitle}>Next Appointment</Text>
               </View>
-              <TouchableOpacity
-                style={styles.primaryButton}
-                onPress={() => navigation.navigate('JoinVideoCall')}
-              >
-                <Ionicons name="videocam" size={16} color="#FFFFFF" style={styles.btnIcon} />
-                <Text style={styles.primaryButtonText}>Join Video Call</Text>
-              </TouchableOpacity>
+              
+              <View style={styles.appointmentRow}>
+                <View style={styles.appointmentInfo}>
+                  <Text style={styles.doctorName}>Dr. Sarah Johnson</Text>
+                  <Text style={styles.specialtyText}>Family Medicine</Text>
+                  <View style={styles.timeRow}>
+                    <Ionicons name="time-outline" size={14} color="#64748B" />
+                    <Text style={styles.timeText}>2:30 PM</Text>
+                    <Ionicons name="videocam-outline" size={14} color="#64748B" style={{marginLeft: 8}} />
+                    <Text style={styles.timeText}>Video Consultation</Text>
+                  </View>
+                </View>
+                <TouchableOpacity
+                  style={styles.primaryButton}
+                  onPress={() => navigation.navigate('JoinVideoCall')}
+                >
+                  <Ionicons name="videocam" size={16} color="#FFFFFF" style={styles.btnIcon} />
+                  <Text style={styles.primaryButtonText}>Join Video Call</Text>
+                </TouchableOpacity>
+              </View>
             </View>
-          </View>
+          )}
 
           {/* Pending Referrals */}
           <View style={styles.sectionHeaderRow}>
@@ -184,52 +226,56 @@ export default function DashboardScreen({ navigation, route }) {
             <Text style={{ color: '#089FB4', fontWeight: '700', fontSize: 14 }}>Request a New Referral</Text>
           </TouchableOpacity>
 
-          {/* Pending Payments */}
-          <View style={styles.sectionHeaderRow}>
-            <View style={styles.sectionTitleGroup}>
-              <Ionicons name="alert-circle-outline" size={20} color="#F59E0B" />
-              <Text style={styles.sectionTitle}>Pending Payments - Action Required</Text>
-            </View>
-            <TouchableOpacity onPress={() => navigation.navigate('Invoice')}>
-              <Text style={styles.viewAllText}>View All →</Text>
-            </TouchableOpacity>
-          </View>
-
-          <View style={[styles.card, styles.cardLeftBorderWarning]}>
-            <View style={styles.rowSpaceBetween}>
-              <Text style={styles.cardPrimaryTitle}>Consultation with Dr. Maria Santos</Text>
-              <View style={styles.badgeWarning}><Text style={styles.badgeWarningText}>Pending</Text></View>
-            </View>
-            <Text style={styles.cardDetailText}>Consultation Date: March 28, 2026</Text>
-            
-            <View style={styles.bulletList}>
-              <View style={styles.bulletItem}>
-                <Ionicons name="document-text-outline" size={14} color="#64748B" />
-                <Text style={styles.bulletText}><Text style={styles.boldText}>Medical Certificate:</Text> $350 (unpaid)</Text>
+          {isMockUser && (
+            <>
+              {/* Pending Payments */}
+              <View style={styles.sectionHeaderRow}>
+                <View style={styles.sectionTitleGroup}>
+                  <Ionicons name="alert-circle-outline" size={20} color="#F59E0B" />
+                  <Text style={styles.sectionTitle}>Pending Payments - Action Required</Text>
+                </View>
+                <TouchableOpacity onPress={() => navigation.navigate('Invoice')}>
+                  <Text style={styles.viewAllText}>View All →</Text>
+                </TouchableOpacity>
               </View>
-              <View style={styles.bulletItem}>
-                <Ionicons name="document-outline" size={14} color="#64748B" />
-                <Text style={styles.bulletText}><Text style={styles.boldText}>Medical Clearance:</Text> $450 (unpaid)</Text>
-              </View>
-            </View>
 
-            <View style={styles.actionRow}>
-              <TouchableOpacity
-                style={styles.outlineButton}
-                onPress={() => navigation.navigate('Invoice')}
-              >
-                <Text style={styles.outlineButtonText}>View Invoice</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
+              <View style={[styles.card, styles.cardLeftBorderWarning]}>
+                <View style={styles.rowSpaceBetween}>
+                  <Text style={styles.cardPrimaryTitle}>Consultation with Dr. Maria Santos</Text>
+                  <View style={styles.badgeWarning}><Text style={styles.badgeWarningText}>Pending</Text></View>
+                </View>
+                <Text style={styles.cardDetailText}>Consultation Date: March 28, 2026</Text>
+                
+                <View style={styles.bulletList}>
+                  <View style={styles.bulletItem}>
+                    <Ionicons name="document-text-outline" size={14} color="#64748B" />
+                    <Text style={styles.bulletText}><Text style={styles.boldText}>Medical Certificate:</Text> $350 (unpaid)</Text>
+                  </View>
+                  <View style={styles.bulletItem}>
+                    <Ionicons name="document-outline" size={14} color="#64748B" />
+                    <Text style={styles.bulletText}><Text style={styles.boldText}>Medical Clearance:</Text> $450 (unpaid)</Text>
+                  </View>
+                </View>
+
+                <View style={styles.actionRow}>
+                  <TouchableOpacity
+                    style={styles.outlineButton}
+                    onPress={() => navigation.navigate('Invoice')}
+                  >
+                    <Text style={styles.outlineButtonText}>View Invoice</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            </>
+          )}
 
           {/* Health Overview */}
           <Text style={[styles.sectionTitle, {marginTop: 8, marginBottom: 12}]}>Health Overview</Text>
           <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.metricsScrollContainer}>
             {[
-              { value: '3', label: 'Active Medications', icon: 'bandage-outline', color: '#3B82F6' },
-              { value: '2', label: 'Upcoming Appointments', icon: 'calendar-outline', color: '#0AB4B5' },
-              { value: '1 New', label: 'Lab Results', icon: 'pulse-outline', color: '#8B5CF6', badge: 'New' },
+              { value: isMockUser ? '3' : '0', label: 'Active Medications', icon: 'bandage-outline', color: '#3B82F6' },
+              { value: isMockUser ? '2' : '0', label: 'Upcoming Appointments', icon: 'calendar-outline', color: '#0AB4B5' },
+              { value: isMockUser ? '1 New' : '0', label: 'Lab Results', icon: 'pulse-outline', color: '#8B5CF6', badge: isMockUser ? 'New' : null },
             ].map((metric, idx) => (
               <View key={idx} style={styles.metricCard}>
                 <View style={styles.metricHeader}>
@@ -244,41 +290,45 @@ export default function DashboardScreen({ navigation, route }) {
             ))}
           </ScrollView>
 
-          {/* Bottom Split (Prescriptions & Quick Access) - Stacked vertically for mobile */}
-          <View style={styles.sectionHeaderRow}>
-            <Text style={styles.sectionTitle}>Prescriptions</Text>
-            <TouchableOpacity onPress={() => navigation.navigate('Prescriptions')}>
-              <Text style={styles.viewAllText}>View All →</Text>
-            </TouchableOpacity>
-          </View>
+          {isMockUser && (
+            <>
+              {/* Bottom Split (Prescriptions & Quick Access) - Stacked vertically for mobile */}
+              <View style={styles.sectionHeaderRow}>
+                <Text style={styles.sectionTitle}>Prescriptions</Text>
+                <TouchableOpacity onPress={() => navigation.navigate('Prescriptions')}>
+                  <Text style={styles.viewAllText}>View All →</Text>
+                </TouchableOpacity>
+              </View>
 
-          {/* Prescriptions List */}
-          <View style={styles.prescriptionCard}>
-             <View style={styles.rowSpaceBetween}>
-                <View>
-                  <Text style={styles.medName}>Lisinopril</Text>
-                  <Text style={styles.medDose}>10mg</Text>
-                </View>
-                <View style={styles.badgeWarningSmall}><Text style={styles.badgeWarningTextSmall}>Due Soon</Text></View>
-             </View>
-             <View style={[styles.rowSpaceBetween, {marginTop: 12}]}>
-               <Text style={styles.refillText}>Refill in 5 days</Text>
-               <TouchableOpacity style={styles.refillButton} onPress={() => navigation.navigate('Prescriptions')}><Text style={styles.refillButtonText}>Refill Now</Text></TouchableOpacity>
-             </View>
-          </View>
+              {/* Prescriptions List */}
+              <View style={styles.prescriptionCard}>
+                 <View style={styles.rowSpaceBetween}>
+                    <View>
+                      <Text style={styles.medName}>Lisinopril</Text>
+                      <Text style={styles.medDose}>10mg</Text>
+                    </View>
+                    <View style={styles.badgeWarningSmall}><Text style={styles.badgeWarningTextSmall}>Due Soon</Text></View>
+                 </View>
+                 <View style={[styles.rowSpaceBetween, {marginTop: 12}]}>
+                   <Text style={styles.refillText}>Refill in 5 days</Text>
+                   <TouchableOpacity style={styles.refillButton} onPress={() => navigation.navigate('Prescriptions')}><Text style={styles.refillButtonText}>Refill Now</Text></TouchableOpacity>
+                 </View>
+              </View>
 
-          <View style={styles.prescriptionCard}>
-             <View style={styles.rowSpaceBetween}>
-                <View>
-                  <Text style={styles.medName}>Metformin</Text>
-                  <Text style={styles.medDose}>500mg</Text>
-                </View>
-             </View>
-             <View style={[styles.rowSpaceBetween, {marginTop: 12}]}>
-               <Text style={styles.refillText}>Refill in 30 days</Text>
-               <TouchableOpacity style={styles.refillButton} onPress={() => navigation.navigate('Prescriptions')}><Text style={styles.refillButtonText}>Refill Now</Text></TouchableOpacity>
-             </View>
-          </View>
+              <View style={styles.prescriptionCard}>
+                 <View style={styles.rowSpaceBetween}>
+                    <View>
+                      <Text style={styles.medName}>Metformin</Text>
+                      <Text style={styles.medDose}>500mg</Text>
+                    </View>
+                 </View>
+                 <View style={[styles.rowSpaceBetween, {marginTop: 12}]}>
+                   <Text style={styles.refillText}>Refill in 30 days</Text>
+                   <TouchableOpacity style={styles.refillButton} onPress={() => navigation.navigate('Prescriptions')}><Text style={styles.refillButtonText}>Refill Now</Text></TouchableOpacity>
+                 </View>
+              </View>
+            </>
+          )}
 
           <Text style={[styles.sectionTitle, {marginTop: 16, marginBottom: 12}]}>Quick Access</Text>
           

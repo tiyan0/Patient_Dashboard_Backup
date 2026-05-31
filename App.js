@@ -26,9 +26,11 @@ import {
   MedicalRecordsSharingScreen,
   BookSpecialistScreen,
   BookTherapyScreen,
+  ResetPasswordScreen,
   BookPhysicalScreen,
   ConsultationIntakeScreen,
   RequestReferralScreen,
+  RenewalRequestsScreen,
 } from './PatientFlowScreens';
 
 const Tab = createBottomTabNavigator();
@@ -108,6 +110,7 @@ function MainTabs() {
       <Tab.Screen name="Invoice" component={InvoiceScreen} />
       <Tab.Screen name="PaymentSuccess" component={PaymentSuccessScreen} />
       <Tab.Screen name="EditProfile" component={EditProfileScreen} />
+      <Tab.Screen name="RenewalRequests" component={RenewalRequestsScreen} />
     </Tab.Navigator>
   );
 }
@@ -117,6 +120,7 @@ export default function App() {
     <NavigationContainer>
       <Stack.Navigator screenOptions={{ headerShown: false, gestureEnabled: false, animation: 'none' }} initialRouteName="Auth">
         <Stack.Screen name="Auth" component={AuthScreen} />
+        <Stack.Screen name="ResetPassword" component={ResetPasswordScreen} />
         <Stack.Screen name="CreateProfile" component={CreateProfileScreen} />
         <Stack.Screen name="MainTabs" component={MainTabs} />
       </Stack.Navigator>

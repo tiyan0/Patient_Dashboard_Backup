@@ -15,11 +15,15 @@ import {
   Animated,
   SafeAreaView,
   Switch,
+  Keyboard,
+  TouchableWithoutFeedback,
 } from 'react-native';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import Svg, { Circle, Rect } from 'react-native-svg';
 import * as ImagePicker from 'expo-image-picker';
 import DateTimePicker from '@react-native-community/datetimepicker';
+
+import { API_URL, currentUser, setCurrentUser } from './config';
 
 const teal = '#0AB4B5';
 const cyan = '#089FB4';
@@ -76,13 +80,13 @@ function Header({ title, subtitle, icon, navigation, hideBackButton }) {
   );
 }
 
-function Screen({ children, title, subtitle, icon, navigation, hideBackButton }) {
+function Screen({ children, title, subtitle, icon, navigation, hideBackButton, scrollViewRef }) {
   return (
     <SafeAreaView style={styles.safeArea}>
       <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
       <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
         <Header title={title} subtitle={subtitle} icon={icon} navigation={navigation} hideBackButton={hideBackButton} />
-        <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
+        <ScrollView ref={scrollViewRef} showsVerticalScrollIndicator={false} contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
           {children}
         </ScrollView>
       </KeyboardAvoidingView>
@@ -173,8 +177,9 @@ function AnimatedBodyPart({ part, isSelected, onPress }) {
 
 export function AppointmentsScreen({ navigation, route }) {
   const [selected, setSelected] = useState('Upcoming');
+  const isMockUser = true; // Enabled for testing with any user account
 
-  const [upcomingAppointments, setUpcomingAppointments] = useState([
+  const [upcomingAppointments, setUpcomingAppointments] = useState(isMockUser ? [
     {
       id: '1',
       doctor: 'Dr. Sarah Johnson',
@@ -197,20 +202,77 @@ export function AppointmentsScreen({ navigation, route }) {
       color: '#F59E0B',
       actions: ['Message']
     }
-  ]);
+  ] : []);
+
+  // Fetch appointments from the Sails backend every time the screen is focused
+  useEffect(() => {
+    const loadAppointments = () => {
+      if (!currentUser?.id) return;
+      fetch(`${API_URL}/appointment?user=${currentUser.id}`)
+        .then(async (res) => {
+          if (!res.ok) {
+            const errText = await res.text();
+            throw new Error(`HTTP ${res.status} - ${errText}`);
+          }
+          return res.json();
+        })
+        .then((data) => {
+          if (data && data.length > 0) {
+            const sortedData = data.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+            // Automatically attach actions for the frontend UI buttons
+            const formattedData = sortedData.map(appt => ({
+              ...appt,
+              actions: appt.type?.toLowerCase().includes('video') ? ['Join Call', 'Message'] : ['Message']
+            }));
+            setUpcomingAppointments(formattedData);
+          }
+        })
+        .catch((err) => console.error('Error fetching appointments from API:', err));
+    };
+
+    const unsubscribe = navigation.addListener('focus', loadAppointments);
+    loadAppointments(); // Fetch immediately on mount as well
+
+    return unsubscribe;
+  }, [navigation]);
 
   useEffect(() => {
     if (route?.params?.newAppointment) {
-      setUpcomingAppointments(prev => {
-        const exists = prev.find(a => a.id === route.params.newAppointment.id);
-        if (exists) return prev;
-        return [route.params.newAppointment, ...prev];
-      });
+      const newAppt = route.params.newAppointment;
+      
+      // Save the newly booked appointment to the Sails.js Database
+      fetch(`${API_URL}/appointment`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          doctor: newAppt.doctor || 'Unknown Doctor',
+          specialty: newAppt.specialty || '',
+          status: newAppt.status || 'Confirmed',
+          date: newAppt.date || '',
+          time: newAppt.time || '',
+          type: newAppt.type || '',
+          color: newAppt.color || '#089FB4',
+          chiefComplaint: newAppt.chiefComplaint || '',
+          user: String(currentUser?.id)
+        }),
+      })
+        .then((res) => res.json())
+        .then((savedAppt) => {
+          // Attach UI actions and append it to our screen list
+          savedAppt.actions = newAppt.actions || ['Message'];
+          setUpcomingAppointments(prev => {
+            const exists = prev.find(a => a.id === savedAppt.id);
+            if (exists) return prev;
+            return [savedAppt, ...prev];
+          });
+        })
+        .catch((err) => console.error('Error posting new appointment:', err));
+
       navigation.setParams({ newAppointment: undefined });
     }
   }, [route?.params?.newAppointment, navigation]);
 
-  const pastAppointments = [
+  const pastAppointments = isMockUser ? [
     {
       doctor: 'Dr. Sarah Johnson',
       specialty: 'Family Medicine',
@@ -221,7 +283,7 @@ export function AppointmentsScreen({ navigation, route }) {
       color: '#10B981',
       actions: []
     }
-  ];
+  ] : [];
 
   const displayList = selected === 'Upcoming' ? upcomingAppointments : pastAppointments;
 
@@ -303,8 +365,11 @@ export function PrescriptionsScreen({ navigation }) {
   const [pickerTime, setPickerTime] = useState(new Date());
   const [showRenewalModal, setShowRenewalModal] = useState(false);
   const [renewalMed, setRenewalMed] = useState(null);
+  const [preferredPharmacy, setPreferredPharmacy] = useState('');
+  const [renewalNotes, setRenewalNotes] = useState('');
+  const isMockUser = true; // Enabled for testing with any user account
 
-  const prescriptions = [
+  const [prescriptions, setPrescriptions] = useState(isMockUser ? [
     {
       name: 'Lisinopril',
       subtitle: '10 mg • once daily',
@@ -353,7 +418,25 @@ export function PrescriptionsScreen({ navigation }) {
       color: '#64748B',
       icon: 'flask-outline'
     },
-  ];
+  ] : []);
+
+  useEffect(() => {
+    if (!currentUser?.id) return;
+    fetch(`${API_URL}/prescription?user=${currentUser.id}`)
+      .then(async (res) => {
+        if (!res.ok) {
+          const errText = await res.text();
+          throw new Error(`HTTP ${res.status} - ${errText}`);
+        }
+        return res.json();
+      })
+      .then((data) => {
+        if (data && data.length > 0) {
+          setPrescriptions(data);
+        }
+      })
+      .catch((err) => console.error('Error fetching prescriptions:', err));
+  }, []);
 
   const activeMeds = prescriptions.filter(med => med.status !== 'Past');
   const pastMeds = prescriptions.filter(med => med.status === 'Past');
@@ -384,7 +467,12 @@ export function PrescriptionsScreen({ navigation }) {
   return (
     <>
       <Screen title="Prescriptions" subtitle="Manage your medications" icon="document-text-outline" navigation={navigation}>
-      <Text style={[styles.sectionHeader, { marginTop: 0, marginBottom: 12 }]}>Active Medications</Text>
+      <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 0, marginBottom: 12, paddingHorizontal: 4 }}>
+        <Text style={[styles.sectionHeader, { marginTop: 0, marginBottom: 0, paddingHorizontal: 0 }]}>Active Medications</Text>
+        <TouchableOpacity onPress={() => navigation.navigate('RenewalRequests')}>
+          <Text style={{ color: cyan, fontSize: 13, fontWeight: '700' }}>View Renewals</Text>
+        </TouchableOpacity>
+      </View>
 
       {/* Refill Reminder */}
       <Card style={[styles.warningBorder, { flexDirection: 'row', alignItems: 'center', paddingVertical: 14 }]}>
@@ -597,35 +685,55 @@ export function PrescriptionsScreen({ navigation }) {
 
       {/* Renewal Request Modal */}
       <Modal visible={showRenewalModal} transparent={true} animationType="fade" onRequestClose={() => setShowRenewalModal(false)}>
-        <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', alignItems: 'center', padding: 20 }}>
-          <View style={{ backgroundColor: '#FFFFFF', borderRadius: 16, padding: 20, width: '100%', maxWidth: 340, shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.2, shadowRadius: 10, elevation: 5 }}>
-            <Text style={[styles.largeTitle, { fontSize: 20, marginBottom: 8 }]}>Request Renewal</Text>
-            <Text style={[styles.bodyText, { marginBottom: 16 }]}>
-              Submit a renewal request for <Text style={{ fontWeight: '700', color: ink }}>{renewalMed?.name}</Text>.
-            </Text>
+        <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+          <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', alignItems: 'center', padding: 20 }}>
+            <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ width: '100%', alignItems: 'center' }}>
+              <View style={{ backgroundColor: '#FFFFFF', borderRadius: 16, padding: 20, width: '100%', maxWidth: 340, shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.2, shadowRadius: 10, elevation: 5 }}>
+                <Text style={[styles.largeTitle, { fontSize: 20, marginBottom: 8 }]}>Request Renewal</Text>
+                <Text style={[styles.bodyText, { marginBottom: 16 }]}>
+                  Submit a renewal request for <Text style={{ fontWeight: '700', color: ink }}>{renewalMed?.name}</Text>.
+                </Text>
 
-            <Text style={styles.inputLabel}>Preferred Pharmacy</Text>
-            <TextInput style={[styles.textInput, { marginBottom: 16 }]} placeholder="e.g. CVS Pharmacy" placeholderTextColor="#94A3B8" />
+                <Text style={styles.inputLabel}>Preferred Pharmacy</Text>
+                <TextInput style={[styles.textInput, { marginBottom: 16 }]} placeholder="e.g. CVS Pharmacy" placeholderTextColor="#94A3B8" value={preferredPharmacy} onChangeText={setPreferredPharmacy} />
 
-            <Text style={styles.inputLabel}>Additional Notes (Optional)</Text>
-            <TextInput style={[styles.textInput, { height: 80, paddingTop: 12, marginBottom: 24 }]} placeholder="Any notes for the doctor..." placeholderTextColor="#94A3B8" multiline />
+                <Text style={styles.inputLabel}>Additional Notes (Optional)</Text>
+                <TextInput style={[styles.textInput, { height: 80, paddingTop: 12, marginBottom: 24 }]} placeholder="Any notes for the doctor..." placeholderTextColor="#94A3B8" multiline value={renewalNotes} onChangeText={setRenewalNotes} />
 
-            <View style={{ flexDirection: 'row', gap: 12 }}>
-              <TouchableOpacity style={[styles.outlineButton, { flex: 1 }]} onPress={() => setShowRenewalModal(false)}>
-                <Text style={styles.outlineButtonText}>Cancel</Text>
-              </TouchableOpacity>
-              <TouchableOpacity 
-                style={[styles.primaryButton, { flex: 1, marginTop: 0 }]} 
-                onPress={() => {
-                  setShowRenewalModal(false);
-                  Alert.alert("Request Sent", `Your renewal request for ${renewalMed?.name} has been sent to ${renewalMed?.prescriber}.`);
-                }}
-              >
-                <Text style={styles.primaryButtonText}>Submit</Text>
-              </TouchableOpacity>
-            </View>
+                <View style={{ flexDirection: 'row', gap: 12 }}>
+                  <TouchableOpacity style={[styles.outlineButton, { flex: 1 }]} onPress={() => { setShowRenewalModal(false); setPreferredPharmacy(''); setRenewalNotes(''); }}>
+                    <Text style={styles.outlineButtonText}>Cancel</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity 
+                    style={[styles.primaryButton, { flex: 1, marginTop: 0, backgroundColor: cyan }]} 
+                    onPress={() => {
+                      const payload = {
+                        medication: renewalMed?.name || 'Unknown',
+                        prescriber: renewalMed?.prescriber || 'Unknown',
+                        pharmacy: preferredPharmacy,
+                        notes: renewalNotes,
+                        status: 'Pending',
+                        user: String(currentUser?.id)
+                      };
+                      fetch(`${API_URL}/renewalrequest`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(payload)
+                      }).catch(err => console.error('Error submitting renewal:', err));
+
+                      setShowRenewalModal(false);
+                      setPreferredPharmacy('');
+                      setRenewalNotes('');
+                      Alert.alert("Request Sent", `Your renewal request for ${renewalMed?.name} has been sent to ${renewalMed?.prescriber}.`);
+                    }}
+                  >
+                    <Text style={styles.primaryButtonText}>Submit</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            </KeyboardAvoidingView>
           </View>
-        </View>
+        </TouchableWithoutFeedback>
       </Modal>
     </>
   );
@@ -633,6 +741,57 @@ export function PrescriptionsScreen({ navigation }) {
 
 export function AuthScreen({ navigation }) {
   const [showPassword, setShowPassword] = useState(false);
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+
+  const handleLogin = async () => {
+    try {
+      console.log(`Attempting to login at: ${API_URL}/user/login`);
+      const response = await fetch(`${API_URL}/user/login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password })
+      });
+      
+      const responseText = await response.text();
+      let data = {};
+      try {
+        data = JSON.parse(responseText);
+      } catch (e) {
+        data = { error: `Endpoint missing on backend (Server returned: ${responseText})` };
+      }
+      
+      if (response.ok) {
+        setCurrentUser(data.user);
+        navigation.navigate('MainTabs');
+      } else {
+        Alert.alert('Login Failed', data.error || 'Invalid credentials');
+      }
+    } catch (error) {
+      console.error('Login Connection Error:', error);
+      Alert.alert('Connection Error', `Could not connect to ${API_URL}.\n\nPlease check your IP address in config.js and ensure your Sails server is running.`);
+    }
+  };
+
+  const handleForgotPassword = () => {
+    if (!email.includes('@') || !email.includes('.')) {
+      Alert.alert('Email Required', 'Please enter your registered email address first to reset your password.');
+      return;
+    }
+    
+    Alert.alert(
+      'Reset Password',
+      `A secure password reset link will be sent to:\n${email}`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        { text: 'Send Link', onPress: () => {
+            Alert.alert('Link Sent!', 'For testing purposes, we will simulate clicking the link from your email inbox.', [
+              { text: 'Simulate Click', onPress: () => navigation.navigate('ResetPassword') }
+            ]);
+        }}
+      ]
+    );
+  };
 
   return (
     <SafeAreaView style={[styles.safeArea, styles.authWrapper]}>
@@ -655,18 +814,18 @@ export function AuthScreen({ navigation }) {
             
             <View style={styles.inputGroup}>
               <Text style={styles.inputLabel}>Email Address</Text>
-              <TextInput style={styles.textInput} placeholder="Enter your email" placeholderTextColor="#94A3B8" autoCapitalize="none" keyboardType="email-address" />
+              <TextInput style={styles.textInput} placeholder="Enter your email" placeholderTextColor="#94A3B8" autoCapitalize="none" keyboardType="email-address" value={email} onChangeText={setEmail} />
             </View>
             
             <View style={styles.inputGroup}>
               <Text style={styles.inputLabel}>Password</Text>
               <View style={{ justifyContent: 'center' }}>
-                <TextInput style={[styles.textInput, { paddingRight: 40 }]} placeholder="Enter your password" placeholderTextColor="#94A3B8" secureTextEntry={!showPassword} />
+                <TextInput style={[styles.textInput, { paddingRight: 40 }]} placeholder="Enter your password" placeholderTextColor="#94A3B8" secureTextEntry={!showPassword} value={password} onChangeText={setPassword} />
                 <TouchableOpacity onPress={() => setShowPassword(!showPassword)} style={{ position: 'absolute', right: 14 }}>
                   <Ionicons name={showPassword ? "eye-off-outline" : "eye-outline"} size={20} color={muted} />
                 </TouchableOpacity>
               </View>
-              <TouchableOpacity style={{ alignSelf: 'flex-end', marginTop: 8 }}>
+              <TouchableOpacity style={{ alignSelf: 'flex-end', marginTop: 8 }} onPress={handleForgotPassword}>
                 <Text style={{ color: cyan, fontSize: 12, fontWeight: '700' }}>Forgot Password?</Text>
               </TouchableOpacity>
             </View>
@@ -674,27 +833,10 @@ export function AuthScreen({ navigation }) {
             <PrimaryButton
               label="Sign In"
               icon="log-in-outline"
-              onPress={() => navigation.navigate('MainTabs')}
+              onPress={handleLogin}
             />
 
-            <View style={{ flexDirection: 'row', alignItems: 'center', marginVertical: 20 }}>
-              <View style={{ flex: 1, height: 1, backgroundColor: '#E2E8F0' }} />
-              <Text style={{ color: muted, marginHorizontal: 12, fontSize: 11, fontWeight: '700' }}>OR CONTINUE WITH</Text>
-              <View style={{ flex: 1, height: 1, backgroundColor: '#E2E8F0' }} />
-            </View>
-
-            <View style={{ flexDirection: 'row', gap: 12, marginBottom: 16 }}>
-              <TouchableOpacity style={[styles.outlineButton, { flex: 1, flexDirection: 'row', borderColor: '#E2E8F0', backgroundColor: '#FFFFFF' }]}>
-                <Ionicons name="logo-google" size={18} color="#EA4335" style={{ marginRight: 8 }} />
-                <Text style={{ color: ink, fontSize: 13, fontWeight: '700' }}>Google</Text>
-              </TouchableOpacity>
-              <TouchableOpacity style={[styles.outlineButton, { flex: 1, flexDirection: 'row', borderColor: '#E2E8F0', backgroundColor: '#FFFFFF' }]}>
-                <Ionicons name="logo-apple" size={18} color={ink} style={{ marginRight: 8 }} />
-                <Text style={{ color: ink, fontSize: 13, fontWeight: '700' }}>Apple</Text>
-              </TouchableOpacity>
-            </View>
-
-            <TouchableOpacity style={{ alignItems: 'center', marginVertical: 8 }} onPress={() => navigation.navigate('MainTabs')}>
+            <TouchableOpacity style={{ alignItems: 'center', marginVertical: 24 }} onPress={() => navigation.navigate('MainTabs')}>
               <Ionicons name="finger-print-outline" size={36} color={cyan} />
               <Text style={{ color: muted, fontSize: 11, marginTop: 4, fontWeight: '600' }}>Biometric Login</Text>
             </TouchableOpacity>
@@ -721,11 +863,13 @@ export function CreateProfileScreen({ navigation }) {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [bloodType, setBloodType] = useState('');
   const [showBloodTypeDropdown, setShowBloodTypeDropdown] = useState(false);
-  const [emergencyRelationship, setEmergencyRelationship] = useState('Mother');
+  const [emergencyRelationship, setEmergencyRelationship] = useState('');
   const [otherRelationship, setOtherRelationship] = useState('');
   const [emergencyEmail, setEmergencyEmail] = useState('');
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
+  const [gender, setGender] = useState('');
+  const [address, setAddress] = useState('');
   const [email, setEmail] = useState('');
   const [allergies, setAllergies] = useState('');
   const [emergencyName, setEmergencyName] = useState('');
@@ -738,8 +882,11 @@ export function CreateProfileScreen({ navigation }) {
       allowsEditing: true,
       aspect: [1, 1],
       quality: 0.5,
+      base64: true,
     });
-    if (!result.canceled) setProfileImage(result.assets[0].uri);
+    if (!result.canceled) {
+      setProfileImage(`data:image/jpeg;base64,${result.assets[0].base64}`);
+    }
   };
 
   const passwordsMatch = password === confirmPassword;
@@ -748,17 +895,64 @@ export function CreateProfileScreen({ navigation }) {
   const isPhoneValid = phone === '' || phone.replace(/\D/g, '').length === 12;
   const isEmergencyPhoneValid = emergencyPhone === '' || emergencyPhone.replace(/\D/g, '').length === 12;
 
-  const canSubmit = firstName.trim() !== '' && lastName.trim() !== '' && dob !== null && 
+  const canSubmit = firstName.trim() !== '' && lastName.trim() !== '' && gender !== '' && address.trim() !== '' && dob !== null && 
     email.includes('@') && email.includes('.') && 
     phone.replace(/\D/g, '').length === 12 && 
     password !== '' && passwordsMatch && 
     bloodType !== '' && 
     emergencyName.trim() !== '' && 
+    emergencyRelationship !== '' &&
     emergencyPhone.replace(/\D/g, '').length === 12 && 
     (emergencyRelationship !== 'Other' || otherRelationship.trim() !== '') &&
     emergencyEmail.includes('@') && emergencyEmail.includes('.');
 
   const bloodTypes = ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-', 'Unknown'];
+
+  const handleRegister = async () => {
+    try {
+      console.log(`Attempting to register at: ${API_URL}/user/register`);
+      const response = await fetch(`${API_URL}/user/register`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          firstName,
+          lastName,
+          gender,
+          address,
+          email,
+          password,
+          phone,
+          bloodType,
+          allergies,
+          emergencyName,
+          emergencyPhone,
+          emergencyEmail,
+          dob: dob.toLocaleDateString(),
+          emergencyRelationship: emergencyRelationship === 'Other' ? otherRelationship : emergencyRelationship,
+          profileImage
+        })
+      });
+      
+      const responseText = await response.text();
+      let data = {};
+      try {
+        data = JSON.parse(responseText);
+      } catch (e) {
+        data = { error: `Endpoint missing on backend (Server returned: ${responseText})` };
+      }
+      
+      if (response.ok) {
+        setCurrentUser(data);
+        Alert.alert('Success', 'Profile created successfully!');
+        navigation.navigate('MainTabs');
+      } else {
+        Alert.alert('Registration Failed', data.error || 'Check your inputs');
+      }
+    } catch (error) {
+      console.error('Register Connection Error:', error);
+      Alert.alert('Connection Error', `Could not connect to ${API_URL}.\n\nPlease check your IP address in config.js and ensure your Sails server is running.`);
+    }
+  };
 
   return (
     <Screen title="Create Profile" subtitle="Tell us about yourself" icon="person-add-outline" navigation={navigation}>
@@ -772,6 +966,19 @@ export function CreateProfileScreen({ navigation }) {
 
         <View style={styles.inputGroup}><Text style={styles.inputLabel}>First Name *</Text><TextInput style={styles.textInput} placeholder="e.g. Sarah" placeholderTextColor="#94A3B8" value={firstName} onChangeText={setFirstName} /></View>
         <View style={styles.inputGroup}><Text style={styles.inputLabel}>Last Name *</Text><TextInput style={styles.textInput} placeholder="e.g. Williams" placeholderTextColor="#94A3B8" value={lastName} onChangeText={setLastName} /></View>
+        
+        <View style={styles.inputGroup}>
+          <Text style={styles.inputLabel}>Gender *</Text>
+          <View style={{ flexDirection: 'row', gap: 8 }}>
+            {['Male', 'Female', 'Other'].map(g => (
+              <TouchableOpacity key={g} style={{ flex: 1, height: 44, borderRadius: 8, borderWidth: 1, borderColor: gender === g ? cyan : '#CBD5E1', backgroundColor: gender === g ? '#E8F6FA' : '#FFFFFF', alignItems: 'center', justifyContent: 'center' }} onPress={() => setGender(g)}>
+                <Text style={{ color: gender === g ? cyan : ink, fontWeight: '700', fontSize: 13 }}>{g}</Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+        </View>
+
+        <View style={styles.inputGroup}><Text style={styles.inputLabel}>Address *</Text><TextInput style={styles.textInput} placeholder="e.g. 123 Main St, City" placeholderTextColor="#94A3B8" value={address} onChangeText={setAddress} /></View>
         
         <View style={styles.inputGroup}>
           <Text style={styles.inputLabel}>Date of Birth *</Text>
@@ -876,17 +1083,19 @@ export function CreateProfileScreen({ navigation }) {
           <TextInput style={[styles.textInput, !isEmergencyEmailValid && { borderColor: '#EF4444' }]} placeholder="Emergency contact email" placeholderTextColor="#94A3B8" autoCapitalize="none" keyboardType="email-address" value={emergencyEmail} onChangeText={setEmergencyEmail} />
           {!isEmergencyEmailValid && <Text style={{ color: '#EF4444', fontSize: 12, marginTop: 4 }}>Please enter a valid email address.</Text>}
         </View>
-        <PrimaryButton label="Complete Registration" icon="checkmark-circle-outline" onPress={() => navigation.navigate('MainTabs')} color={canSubmit ? cyan : '#CBD5E1'} disabled={!canSubmit} />
+        <PrimaryButton label="Complete Registration" icon="checkmark-circle-outline" onPress={handleRegister} color={canSubmit ? cyan : '#CBD5E1'} disabled={!canSubmit} />
       </Card>
     </Screen>
   );
 }
 
 export function EditProfileScreen({ navigation, route }) {
+  const scrollViewRef = useRef(null);
+  const isSaving = useRef(false);
   const currentProfile = route?.params?.currentProfile || {};
 
   const [profileImage, setProfileImage] = useState(currentProfile.profileImage || null);
-  const [gender, setGender] = useState('Female');
+  const [gender, setGender] = useState(currentProfile.gender || 'Female');
   const [bloodType, setBloodType] = useState(currentProfile.bloodType || 'O+');
   const [showBloodTypeDropdown, setShowBloodTypeDropdown] = useState(false);
   const relationshipOptions = ['Mother', 'Father', 'Spouse', 'Sibling', 'Aunt', 'Uncle', 'Cousin', 'Grandfather', 'Grandmother', 'Friend', 'Other'];
@@ -902,12 +1111,19 @@ export function EditProfileScreen({ navigation, route }) {
   const [allergies, setAllergies] = useState(currentProfile.allergies || 'Penicillin, Peanuts');
   const [emergencyName, setEmergencyName] = useState(currentProfile.emergencyName || 'John Williams');
   const [emergencyPhone, setEmergencyPhone] = useState(formatPhoneNumber(currentProfile.emergencyPhone || '09987654321'));
+  const [currentPassword, setCurrentPassword] = useState('');
+  const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [showCurrentPassword, setShowCurrentPassword] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   const bloodTypes = ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-', 'Unknown'];
   const isEmailValid = email === '' || (email.includes('@') && email.includes('.'));
   const isEmergencyEmailValid = emergencyEmail === '' || (emergencyEmail.includes('@') && emergencyEmail.includes('.'));
   const isPhoneValid = phone === '' || phone.replace(/\D/g, '').length === 12;
   const isEmergencyPhoneValid = emergencyPhone === '' || emergencyPhone.replace(/\D/g, '').length === 12;
+  const passwordsMatch = password === confirmPassword;
 
   const canSubmit = firstName.trim() !== '' && lastName.trim() !== '' && address.trim() !== '' &&
     email.includes('@') && email.includes('.') && 
@@ -915,7 +1131,8 @@ export function EditProfileScreen({ navigation, route }) {
     bloodType !== '' && emergencyName.trim() !== '' && 
     emergencyPhone.replace(/\D/g, '').length === 12 && 
     (emergencyRelationship !== 'Other' || otherRelationship.trim() !== '') &&
-    emergencyEmail.includes('@') && emergencyEmail.includes('.');
+    emergencyEmail.includes('@') && emergencyEmail.includes('.') &&
+    (password === '' || (passwordsMatch && currentPassword !== ''));
 
   const handleImagePick = async () => {
     let result = await ImagePicker.launchImageLibraryAsync({
@@ -923,16 +1140,63 @@ export function EditProfileScreen({ navigation, route }) {
       allowsEditing: true,
       aspect: [1, 1],
       quality: 0.5,
+      base64: true,
     });
-    if (!result.canceled) setProfileImage(result.assets[0].uri);
+    if (!result.canceled) {
+      setProfileImage(`data:image/jpeg;base64,${result.assets[0].base64}`);
+    }
   };
 
+  const handleUpdateProfile = async () => {
+    const payload = {
+      firstName, lastName, gender, email, phone, address, bloodType, allergies, emergencyName, emergencyPhone, emergencyEmail, emergencyRelationship: emergencyRelationship === 'Other' ? otherRelationship : emergencyRelationship, profileImage
+    };
+
+    if (password !== '') {
+      payload.password = password;
+      payload.currentPassword = currentPassword;
+    }
+
+    try {
+      if (currentProfile.id) {
+        const response = await fetch(`${API_URL}/user/${currentProfile.id}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+        
+        if (response.ok) {
+          const updatedData = await response.json();
+          setCurrentUser(updatedData);
+        } else {
+          Alert.alert('Update Failed', 'Could not save changes to the database.');
+          return;
+        }
+      } else {
+        // Fallback for mock data without an ID
+        setCurrentUser({ ...currentProfile, ...payload });
+      }
+      
+      Alert.alert('Success', 'Profile updated successfully!');
+      if (scrollViewRef.current) {
+        scrollViewRef.current.scrollTo({ y: 0, animated: false });
+      }
+      isSaving.current = true;
+      navigation.navigate('Profile', { updatedProfile: { ...payload, password: undefined, currentPassword: undefined } });
+    } catch (error) {
+      console.error('Update Connection Error:', error);
+      Alert.alert('Connection Error', 'Could not connect to the server to update profile.');
+    }
+  };
+
+  const initials = `${firstName.charAt(0)}${lastName.charAt(0)}`.toUpperCase();
+
   return (
-    <Screen title="Edit Profile" subtitle="Update your personal details" icon="create-outline" navigation={navigation}>
+    <Screen scrollViewRef={scrollViewRef} title="Edit Profile" subtitle="Update your personal details" icon="create-outline" navigation={navigation}>
       <Card>
         <View style={{ alignItems: 'center', marginBottom: 20 }}>
           <TouchableOpacity onPress={handleImagePick} style={{ width: 80, height: 80, borderRadius: 40, backgroundColor: cyan, alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}>
-            {profileImage ? <Image source={{ uri: profileImage }} style={{ width: '100%', height: '100%' }} /> : <Text style={{ color: '#FFFFFF', fontSize: 28, fontWeight: '900' }}>SW</Text>}
+            {profileImage ? <Image source={{ uri: profileImage }} style={{ width: '100%', height: '100%' }} /> : <Text style={{ color: '#FFFFFF', fontSize: 28, fontWeight: '900' }}>{initials}</Text>}
           </TouchableOpacity>
           <Text style={{ color: cyan, fontSize: 12, fontWeight: '700', marginTop: 8 }}>Change Photo</Text>
         </View>
@@ -962,6 +1226,37 @@ export function EditProfileScreen({ navigation, route }) {
           <Text style={styles.inputLabel}>Phone Number *</Text>
           <TextInput style={[styles.textInput, !isPhoneValid && phone.length > 0 && { borderColor: '#EF4444' }]} placeholder="+63 XXX-XXX-XXXX" placeholderTextColor="#94A3B8" keyboardType="phone-pad" value={phone} onChangeText={(t) => setPhone(formatPhoneNumber(t))} maxLength={16} />
           {(!isPhoneValid && phone.length > 0) && <Text style={{ color: '#EF4444', fontSize: 12, marginTop: 4 }}>Phone number must be complete.</Text>}
+        </View>
+
+        <View style={styles.inputGroup}>
+          <Text style={styles.inputLabel}>Current Password {password.length > 0 ? '*' : '(Required to change password)'}</Text>
+          <View style={{ justifyContent: 'center' }}>
+            <TextInput style={[styles.textInput, { paddingRight: 40 }, password.length > 0 && currentPassword.length === 0 && { borderColor: '#EF4444' }]} placeholder="Enter current password" placeholderTextColor="#94A3B8" secureTextEntry={!showCurrentPassword} value={currentPassword} onChangeText={setCurrentPassword} />
+            <TouchableOpacity onPress={() => setShowCurrentPassword(!showCurrentPassword)} style={{ position: 'absolute', right: 14 }}>
+              <Ionicons name={showCurrentPassword ? "eye-off-outline" : "eye-outline"} size={20} color={muted} />
+            </TouchableOpacity>
+          </View>
+          {(password.length > 0 && currentPassword.length === 0) && <Text style={{ color: '#EF4444', fontSize: 12, marginTop: 4 }}>Current password is required.</Text>}
+        </View>
+
+        <View style={styles.inputGroup}>
+          <Text style={styles.inputLabel}>New Password (Optional)</Text>
+          <View style={{ justifyContent: 'center' }}>
+            <TextInput style={[styles.textInput, { paddingRight: 40 }]} placeholder="Leave blank to keep current password" placeholderTextColor="#94A3B8" secureTextEntry={!showPassword} value={password} onChangeText={setPassword} />
+            <TouchableOpacity onPress={() => setShowPassword(!showPassword)} style={{ position: 'absolute', right: 14 }}>
+              <Ionicons name={showPassword ? "eye-off-outline" : "eye-outline"} size={20} color={muted} />
+            </TouchableOpacity>
+          </View>
+        </View>
+        <View style={styles.inputGroup}>
+          <Text style={styles.inputLabel}>Confirm New Password</Text>
+          <View style={{ justifyContent: 'center' }}>
+            <TextInput style={[styles.textInput, !passwordsMatch && confirmPassword.length > 0 && { borderColor: '#EF4444' }, { paddingRight: 40 }]} placeholder="Confirm new password" placeholderTextColor="#94A3B8" secureTextEntry={!showConfirmPassword} value={confirmPassword} onChangeText={setConfirmPassword} />
+            <TouchableOpacity onPress={() => setShowConfirmPassword(!showConfirmPassword)} style={{ position: 'absolute', right: 14 }}>
+              <Ionicons name={showConfirmPassword ? "eye-off-outline" : "eye-outline"} size={20} color={muted} />
+            </TouchableOpacity>
+          </View>
+          {(!passwordsMatch && confirmPassword.length > 0) && <Text style={{ color: '#EF4444', fontSize: 12, marginTop: 4 }}>Passwords do not match.</Text>}
         </View>
 
         <View style={styles.inputGroup}>
@@ -1019,11 +1314,7 @@ export function EditProfileScreen({ navigation, route }) {
         <PrimaryButton 
           label="Save Changes" 
           icon="save-outline" 
-          onPress={() => navigation.navigate('Profile', {
-            updatedProfile: {
-              firstName, lastName, email, phone, address, bloodType, allergies, emergencyName, emergencyPhone, emergencyEmail, emergencyRelationship: emergencyRelationship === 'Other' ? otherRelationship : emergencyRelationship, profileImage
-            }
-          })} 
+          onPress={handleUpdateProfile} 
           color={canSubmit ? cyan : '#CBD5E1'} 
           disabled={!canSubmit} 
         />
@@ -1036,19 +1327,20 @@ export function ProfileScreen({ navigation, route }) {
   const [useBiometrics, setUseBiometrics] = useState(true);
 
   const [profileData, setProfileData] = useState({
-    firstName: 'Sarah',
-    lastName: 'Williams',
-    email: 'sarah@example.com',
-    phone: '+63 912-345-6789',
-    address: 'Oklahoma City, OK',
-    dob: '12/05/1990',
-    bloodType: 'O+',
-    allergies: 'Penicillin, Peanuts',
-    emergencyName: 'John Williams',
-    emergencyPhone: '+63 998-765-4321',
-    emergencyEmail: 'john.williams@example.com',
-    emergencyRelationship: 'Spouse',
-    profileImage: null,
+    firstName: currentUser?.firstName || 'Sarah',
+    lastName: currentUser?.lastName || 'Williams',
+    gender: currentUser?.gender || 'Female',
+    email: currentUser?.email || 'sarah@example.com',
+    phone: currentUser?.phone || '+63 912-345-6789',
+    address: currentUser?.address || 'Oklahoma City, OK',
+    dob: currentUser?.dob || '12/05/1990',
+    bloodType: currentUser?.bloodType || 'O+',
+    allergies: currentUser?.allergies || 'Penicillin, Peanuts',
+    emergencyName: currentUser?.emergencyName || 'John Williams',
+    emergencyPhone: currentUser?.emergencyPhone || '+63 998-765-4321',
+    emergencyEmail: currentUser?.emergencyEmail || 'john.williams@example.com',
+    emergencyRelationship: currentUser?.emergencyRelationship || 'Spouse',
+    profileImage: currentUser?.profileImage || null,
   });
 
   useEffect(() => {
@@ -1078,7 +1370,7 @@ export function ProfileScreen({ navigation, route }) {
       <Card style={styles.profileCard}>
         <View style={[styles.avatar, profileData.profileImage && { backgroundColor: 'transparent' }]}>
           {profileData.profileImage ? (
-            <Image source={{ uri: profileData.profileImage }} style={{ width: '100%', height: '100%', borderRadius: 22 }} />
+            <Image source={{ uri: profileData.profileImage }} style={{ width: '100%', height: '100%', borderRadius: 40 }} />
           ) : (
             <Text style={styles.avatarText}>{initials}</Text>
           )}
@@ -1108,10 +1400,14 @@ export function ProfileScreen({ navigation, route }) {
           <View style={{ flexDirection: 'row', alignItems: 'center' }}><Ionicons name="location-outline" size={16} color={muted} style={{ marginRight: 8 }} /><Text style={styles.infoLabel}>Address</Text></View>
           <Text style={styles.infoValue}>{profileData.address}</Text>
         </View>
-        <View style={[styles.infoRow, { borderBottomWidth: 0 }]}>
+      <View style={styles.infoRow}>
           <View style={{ flexDirection: 'row', alignItems: 'center' }}><Ionicons name="calendar-outline" size={16} color={muted} style={{ marginRight: 8 }} /><Text style={styles.infoLabel}>Date of Birth</Text></View>
           <Text style={styles.infoValue}>{profileData.dob}</Text>
         </View>
+      <View style={[styles.infoRow, { borderBottomWidth: 0 }]}>
+        <View style={{ flexDirection: 'row', alignItems: 'center' }}><Ionicons name="male-female-outline" size={16} color={muted} style={{ marginRight: 8 }} /><Text style={styles.infoLabel}>Gender</Text></View>
+        <Text style={styles.infoValue}>{profileData.gender}</Text>
+      </View>
       </Card>
 
       <Text style={styles.sectionHeader}>Medical Information</Text>
@@ -1207,7 +1503,10 @@ export function ProfileScreen({ navigation, route }) {
           label="Log Out" 
           icon="log-out-outline" 
           color="#EF4444" 
-          onPress={() => navigation.navigate('Auth')} 
+        onPress={() => {
+          setCurrentUser(null);
+          navigation.navigate('Auth');
+        }} 
         />
       </View>
     </Screen>
@@ -1940,7 +2239,7 @@ export function BookSpecialistScreen({ navigation, route }) {
   );
 }
 
-export function BookTherapyScreen({ navigation }) {
+export function BookTherapyScreen({ navigation, route }) {
   const [step, setStep] = useState(0);
   const totalSteps = 7;
   
@@ -3134,6 +3433,7 @@ export function BookPhysicalScreen({ navigation }) {
 }
 
 export function ConsultationIntakeScreen({ navigation, route }) {
+  const scrollViewRef = useRef(null);
   const consultationType = route.params?.type || 'Consultation';
   const [mainConcern, setMainConcern] = useState('');
   const [selectedSymptoms, setSelectedSymptoms] = useState([]);
@@ -3143,6 +3443,23 @@ export function ConsultationIntakeScreen({ navigation, route }) {
   const [duration, setDuration] = useState('');
   const [painLevel, setPainLevel] = useState(0);
   const [attachments, setAttachments] = useState([]);
+
+  useEffect(() => {
+    const unsubscribe = navigation.addListener('blur', () => {
+      setMainConcern('');
+      setSelectedSymptoms([]);
+      setOtherSymptoms('');
+      setBodyView('Front');
+      setSelectedBodyParts([]);
+      setDuration('');
+      setPainLevel(0);
+      setAttachments([]);
+      if (scrollViewRef.current) {
+        scrollViewRef.current.scrollTo({ y: 0, animated: false });
+      }
+    });
+    return unsubscribe;
+  }, [navigation]);
 
   const commonSymptoms = [
     'Fever', 'Headache', 'Cough', 'Body Pain', 'Dizziness', 'Chest Pain', 
@@ -3210,7 +3527,7 @@ export function ConsultationIntakeScreen({ navigation, route }) {
       <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
       <Header title="Consultation Intake Form" subtitle={`${consultationType} • Help us understand your health concern to provide better care`} icon="document-text-outline" navigation={navigation} />
       
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={[styles.content, { paddingBottom: 40 }]} keyboardShouldPersistTaps="handled">
+      <ScrollView ref={scrollViewRef} showsVerticalScrollIndicator={false} contentContainerStyle={[styles.content, { paddingBottom: 40 }]} keyboardShouldPersistTaps="handled">
         
         <Card>
           <Text style={styles.inputLabel}>What is your main concern? *</Text>
@@ -3333,7 +3650,6 @@ export function ConsultationIntakeScreen({ navigation, route }) {
             color={isProceedDisabled ? '#CBD5E1' : cyan} 
             onPress={() => {
               const newAppt = {
-                id: Date.now().toString(),
                 doctor: 'Dr. Sarah Johnson',
                 specialty: 'Family Medicine',
                 status: 'Confirmed',
@@ -3341,8 +3657,17 @@ export function ConsultationIntakeScreen({ navigation, route }) {
                 time: 'In ~10 mins',
                 type: consultationType,
                 color: '#089FB4',
-                actions: ['Join Call', 'Message']
+                chiefComplaint: mainConcern
               };
+              
+              // Silently save to Sails.js database in the background
+              fetch(`${API_URL}/appointment`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(newAppt),
+              }).catch(err => console.error('Error saving appointment:', err));
+
+              // Navigate to Appointments screen for all consultation types
               navigation.navigate('Appointments', { newAppointment: newAppt });
             }} 
           />
@@ -3357,6 +3682,7 @@ export function ConsultationIntakeScreen({ navigation, route }) {
 }
 
 export function RequestReferralScreen({ navigation, route }) {
+  const scrollViewRef = useRef(null);
   const initialSpecialty = route.params?.targetSpecialty || '';
   const [specialty, setSpecialty] = useState(initialSpecialty);
   const [reason, setReason] = useState('');
@@ -3367,6 +3693,22 @@ export function RequestReferralScreen({ navigation, route }) {
   const [viewDate, setViewDate] = useState(new Date());
   const [showMonthYearPicker, setShowMonthYearPicker] = useState(false);
   const [pickerYear, setPickerYear] = useState(new Date().getFullYear());
+
+  useEffect(() => {
+    const unsubscribe = navigation.addListener('blur', () => {
+      setSpecialty('');
+      setReason('');
+      setSelectedDate('');
+      setSelectedTime(null);
+      setViewDate(new Date());
+      setShowMonthYearPicker(false);
+      setPickerYear(new Date().getFullYear());
+      if (scrollViewRef.current) {
+        scrollViewRef.current.scrollTo({ y: 0, animated: false });
+      }
+    });
+    return unsubscribe;
+  }, [navigation]);
 
   const handlePrevMonth = () => setViewDate(prev => new Date(prev.getFullYear(), prev.getMonth() - 1, 1));
   const handleNextMonth = () => setViewDate(prev => new Date(prev.getFullYear(), prev.getMonth() + 1, 1));
@@ -3383,7 +3725,7 @@ export function RequestReferralScreen({ navigation, route }) {
   const isSubmitDisabled = !reason.trim() || !specialty.trim() || !selectedDate || !selectedTime;
 
   return (
-    <Screen title="Request Referral" subtitle="Get a medical referral for a specialist or therapy" icon="document-text-outline" navigation={navigation}>
+    <Screen scrollViewRef={scrollViewRef} title="Request Referral" subtitle="Get a medical referral for a specialist or therapy" icon="document-text-outline" navigation={navigation}>
       
       {/* Explanation Box to avoid user confusion */}
       <View style={{ backgroundColor: '#F0FDF4', padding: 16, borderRadius: 12, borderWidth: 1, borderColor: '#BBF7D0', marginBottom: 20 }}>
@@ -3558,10 +3900,18 @@ export function MessagesScreen({ navigation, route }) {
   const activeChatIdRef = useRef(activeChatId);
   const scrollViewRef = useRef(null);
   const [inputText, setInputText] = useState('');
-  
+  const isMockUser = true; // Enabled for testing with any user account
+
   useEffect(() => {
     activeChatIdRef.current = activeChatId;
   }, [activeChatId]);
+
+  useEffect(() => {
+    const unsubscribe = navigation.addListener('blur', () => {
+      setActiveChatId(null);
+    });
+    return unsubscribe;
+  }, [navigation]);
 
   useEffect(() => {
     if (route?.params?.chatId) {
@@ -3603,7 +3953,7 @@ export function MessagesScreen({ navigation, route }) {
     }
   }, [route?.params?.chatId, route?.params?.doctorName, navigation]);
 
-  const [conversations, setConversations] = useState([
+  const [conversations, setConversations] = useState(isMockUser ? [
     {
       id: '1',
       name: 'Dr. Sarah Johnson',
@@ -3657,7 +4007,7 @@ export function MessagesScreen({ navigation, route }) {
         { id: 'rx1', sender: 'Pharmacy Support', text: 'Hello! Do you have any questions regarding your current medication orders?', time: 'Just now' },
       ]
     }
-  ]);
+  ] : []);
 
   const sendMessage = () => {
     if (!inputText.trim()) return;
@@ -3890,8 +4240,10 @@ export function MedicalRecordsScreen({ navigation }) {
     'Treatment Plans',
     'Referrals'
   ];
+  
+  const isMockUser = true; // Enabled for testing with any user account
 
-  const consultationHistory = [
+  const consultationHistory = isMockUser ? [
     {
       alias: 'MS',
       doctor: 'Dr. Maria Santos',
@@ -3970,9 +4322,9 @@ export function MedicalRecordsScreen({ navigation }) {
       prescriptions: 3,
       labRequests: 0,
     }
-  ];
+  ] : [];
 
-  const prescriptionsList = [
+  const prescriptionsList = isMockUser ? [
     { 
       id: 'p1', 
       doctor: 'Dr. Maria Santos', 
@@ -3997,9 +4349,9 @@ export function MedicalRecordsScreen({ navigation }) {
       medications: ['Atorvastatin 20mg', 'Aspirin 100mg', 'Metoprolol 50mg'], 
       validUntil: '3/10/2026' 
     }
-  ];
+  ] : [];
 
-  const labRequestsList = [
+  const labRequestsList = isMockUser ? [
     { 
       id: 'l1', 
       doctor: 'Dr. Maria Santos', 
@@ -4024,9 +4376,9 @@ export function MedicalRecordsScreen({ navigation }) {
       status: 'Completed',
       location: 'OkieDoc+ Imaging Center - Ortigas'
     }
-  ];
+  ] : [];
 
-  const medicalCertificatesList = [
+  const medicalCertificatesList = isMockUser ? [
     { 
       id: 'm1', 
       doctor: 'Dr. Maria Santos', 
@@ -4041,9 +4393,9 @@ export function MedicalRecordsScreen({ navigation }) {
       date: '3/15/2026', 
       duration: 'Valid from March 16, 2026' 
     }
-  ];
+  ] : [];
 
-  const treatmentPlansList = [
+  const treatmentPlansList = isMockUser ? [
     { 
       id: 't1', 
       doctor: 'Dr. Sofia Lim', 
@@ -4062,9 +4414,9 @@ export function MedicalRecordsScreen({ navigation }) {
       nextReview: '4/10/2026',
       status: 'Active' 
     }
-  ];
+  ] : [];
 
-  const referralsList = [
+  const referralsList = isMockUser ? [
     { 
       id: 'r1', 
       doctor: 'Dr. Maria Santos (General Physician)', 
@@ -4085,7 +4437,7 @@ export function MedicalRecordsScreen({ navigation }) {
       date: '2/10/2026', 
       status: 'Pending' 
     }
-  ];
+  ] : [];
 
   const currentData = (() => {
     const lowerQuery = searchQuery.toLowerCase();
@@ -4867,6 +5219,117 @@ export function MedicalRecordsSharingScreen({ navigation }) {
   );
 }
 
+export function ResetPasswordScreen({ navigation }) {
+  const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+
+  const passwordsMatch = password === confirmPassword;
+  const canSubmit = password.length > 0 && passwordsMatch;
+
+  const handleReset = () => {
+    // Note: In a full production app, you would send the new password to a backend endpoint here!
+    Alert.alert('Success', 'Your password has been successfully reset. Please sign in with your new password.', [
+      { text: 'OK', onPress: () => navigation.navigate('Auth') }
+    ]);
+  };
+
+  return (
+    <SafeAreaView style={[styles.safeArea, styles.authWrapper]}>
+      <StatusBar barStyle="dark-content" backgroundColor={bg} />
+      <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+        <ScrollView contentContainerStyle={{ flexGrow: 1, justifyContent: 'center' }} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
+          <View style={styles.authHeader}>
+            <View style={styles.authLogoBox}>
+              <Text style={styles.authLogoText}>O+</Text>
+            </View>
+            <Text style={styles.authTitle}>Reset Password</Text>
+            <Text style={styles.authSubtitle}>Create a new secure password</Text>
+          </View>
+
+          <Card style={styles.authCard}>
+            <View style={styles.inputGroup}>
+              <Text style={styles.inputLabel}>New Password *</Text>
+              <View style={{ justifyContent: 'center' }}>
+                <TextInput style={[styles.textInput, { paddingRight: 40 }]} placeholder="Enter new password" placeholderTextColor="#94A3B8" secureTextEntry={!showPassword} value={password} onChangeText={setPassword} />
+                <TouchableOpacity onPress={() => setShowPassword(!showPassword)} style={{ position: 'absolute', right: 14 }}>
+                  <Ionicons name={showPassword ? "eye-off-outline" : "eye-outline"} size={20} color={muted} />
+                </TouchableOpacity>
+              </View>
+            </View>
+
+            <View style={styles.inputGroup}>
+              <Text style={styles.inputLabel}>Confirm New Password *</Text>
+              <View style={{ justifyContent: 'center' }}>
+                <TextInput style={[styles.textInput, !passwordsMatch && confirmPassword.length > 0 && { borderColor: '#EF4444' }, { paddingRight: 40 }]} placeholder="Confirm new password" placeholderTextColor="#94A3B8" secureTextEntry={!showConfirmPassword} value={confirmPassword} onChangeText={setConfirmPassword} />
+                <TouchableOpacity onPress={() => setShowConfirmPassword(!showConfirmPassword)} style={{ position: 'absolute', right: 14 }}>
+                  <Ionicons name={showConfirmPassword ? "eye-off-outline" : "eye-outline"} size={20} color={muted} />
+                </TouchableOpacity>
+              </View>
+              {(!passwordsMatch && confirmPassword.length > 0) && <Text style={{ color: '#EF4444', fontSize: 12, marginTop: 4 }}>Passwords do not match.</Text>}
+            </View>
+
+            <PrimaryButton label="Reset Password" icon="checkmark-circle-outline" color={canSubmit ? cyan : '#CBD5E1'} disabled={!canSubmit} onPress={handleReset} />
+
+            <TouchableOpacity style={styles.authToggle} onPress={() => navigation.navigate('Auth')}>
+              <Text style={styles.authToggleText}>Remembered it? <Text style={{ color: cyan, fontWeight: '800' }}>Sign In</Text></Text>
+            </TouchableOpacity>
+          </Card>
+        </ScrollView>
+      </KeyboardAvoidingView>
+    </SafeAreaView>
+  );
+}
+
+export function RenewalRequestsScreen({ navigation }) {
+  const [requests, setRequests] = useState([]);
+
+  useEffect(() => {
+    if (!currentUser?.id) return;
+    fetch(`${API_URL}/renewalrequest?user=${currentUser.id}`)
+      .then(async (res) => {
+        if (!res.ok) {
+          const errText = await res.text();
+          throw new Error(`HTTP ${res.status} - ${errText}`);
+        }
+        return res.json();
+      })
+      .then((data) => {
+        if (data && data.length > 0) {
+          // Sort by newest first
+          setRequests(data.sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0)));
+        }
+      })
+      .catch((err) => console.error('Error fetching renewal requests:', err));
+  }, []);
+
+  return (
+    <Screen title="Renewal Requests" subtitle="Track your pending prescriptions" icon="sync-outline" navigation={navigation}>
+      {requests.length === 0 ? (
+        <Card style={{ alignItems: 'center', paddingVertical: 32 }}>
+          <Ionicons name="document-text-outline" size={32} color="#CBD5E1" style={{ marginBottom: 12 }} />
+          <Text style={styles.cardTitle}>No renewal requests</Text>
+          <Text style={[styles.bodyText, { textAlign: 'center', marginTop: 4 }]}>You haven't requested any prescription renewals yet.</Text>
+        </Card>
+      ) : (
+        requests.map((req, idx) => (
+          <Card key={req.id || idx}>
+            <View style={styles.rowBetween}>
+              <Text style={styles.cardTitle}>{req.medication}</Text>
+              <Pill label={req.status || 'Pending'} color={req.status === 'Approved' ? '#10B981' : '#F59E0B'} />
+            </View>
+            <Text style={[styles.bodyText, { marginTop: 4 }]}><Text style={{ fontWeight: '700', color: ink }}>Prescriber:</Text> {req.prescriber}</Text>
+            <Text style={styles.bodyText}><Text style={{ fontWeight: '700', color: ink }}>Pharmacy:</Text> {req.pharmacy || 'N/A'}</Text>
+            {!!req.notes && <Text style={[styles.bodyText, { marginTop: 8 }]}><Text style={{ fontWeight: '700', color: ink }}>Notes:</Text> {req.notes}</Text>}
+            {req.createdAt && <Text style={[styles.bodyText, { marginTop: 12, fontSize: 11 }]}><Text style={{ fontWeight: '700', color: ink }}>Requested on:</Text> {new Date(req.createdAt).toLocaleDateString()}</Text>}
+          </Card>
+        ))
+      )}
+    </Screen>
+  );
+}
+
 const styles = StyleSheet.create({
   safeArea: { flex: 1, backgroundColor: '#FFFFFF' },
   header: {
@@ -4960,8 +5423,8 @@ const styles = StyleSheet.create({
   },
   tagRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, justifyContent: 'center', marginTop: 14 },
   profileCard: { alignItems: 'center' },
-  avatar: { width: 78, height: 78, borderRadius: 22, backgroundColor: cyan, alignItems: 'center', justifyContent: 'center', marginBottom: 14 },
-  avatarText: { color: '#FFFFFF', fontSize: 24, fontWeight: '900' },
+  avatar: { width: 80, height: 80, borderRadius: 40, backgroundColor: cyan, alignItems: 'center', justifyContent: 'center', marginBottom: 14 },
+  avatarText: { color: '#FFFFFF', fontSize: 28, fontWeight: '900' },
   listRow: { flexDirection: 'row', alignItems: 'center' },
   rowIcon: { width: 42, height: 42, borderRadius: 11, backgroundColor: '#E0F7FA', alignItems: 'center', justifyContent: 'center', marginRight: 12 },
   searchBox: {

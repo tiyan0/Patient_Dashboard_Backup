@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -14,15 +14,18 @@ import {
 import MapView, { Marker } from 'react-native-maps';
 import { Ionicons } from '@expo/vector-icons';
 
+import { API_URL, currentUser } from './config';
+
 export default function PharmacyScreen({ navigation }) {
   const [activeTab, setActiveTab] = useState('Orders');
   const [trackingModalVisible, setTrackingModalVisible] = useState(false);
   const [trackedOrder, setTrackedOrder] = useState(null);
   const [searchQuery, setSearchQuery] = useState('');
+  const isMockUser = true; // Enabled for testing with any user account
 
-  const orders = [
+  const [orders, setOrders] = useState(isMockUser ? [
     {
-      id: 'ORD-2026-0315',
+      orderId: 'ORD-2026-0315',
       date: 'March 28, 2026',
       status: 'Out for Delivery',
       statusColor: '#3B82F6', // Blue
@@ -39,7 +42,7 @@ export default function PharmacyScreen({ navigation }) {
       ]
     },
     {
-      id: 'ORD-2026-0298',
+      orderId: 'ORD-2026-0298',
       date: 'March 15, 2026',
       status: 'Ready for Pickup',
       statusColor: '#F59E0B', // Orange
@@ -55,7 +58,7 @@ export default function PharmacyScreen({ navigation }) {
       ]
     },
     {
-      id: 'ORD-2026-0287',
+      orderId: 'ORD-2026-0287',
       date: 'March 1, 2026',
       status: 'Delivered',
       statusColor: '#10B981', // Green
@@ -68,7 +71,25 @@ export default function PharmacyScreen({ navigation }) {
       total: '$18.75',
       buttons: []
     },
-  ];
+  ] : []);
+
+  useEffect(() => {
+    if (!currentUser?.id) return;
+    fetch(`${API_URL}/pharmacyorder?user=${currentUser.id}`)
+      .then(async (res) => {
+        if (!res.ok) {
+          const errText = await res.text();
+          throw new Error(`HTTP ${res.status} - ${errText}`);
+        }
+        return res.json();
+      })
+      .then((data) => {
+        if (data && data.length > 0) {
+          setOrders(data);
+        }
+      })
+      .catch((err) => console.error('Error fetching pharmacy orders:', err));
+  }, []);
 
   const initialPharmacies = [
     {
@@ -113,8 +134,8 @@ export default function PharmacyScreen({ navigation }) {
     if (!searchQuery) return true;
     const lowerCaseQuery = searchQuery.toLowerCase();
     return (
-      order.id.toLowerCase().includes(lowerCaseQuery) ||
-      order.items.some((item) => item.name.toLowerCase().includes(lowerCaseQuery))
+      order.orderId?.toLowerCase().includes(lowerCaseQuery) ||
+      order.items?.some((item) => item.name?.toLowerCase().includes(lowerCaseQuery))
     );
   });
 
@@ -193,15 +214,15 @@ export default function PharmacyScreen({ navigation }) {
                 <Ionicons name="search-outline" size={32} color="#CBD5E1" style={{ marginBottom: 12 }} />
                 <Text style={styles.pharmacyName}>No orders found</Text>
                 <Text style={[styles.pharmacyAddress, { textAlign: 'center', marginTop: 4 }]}>
-                  We couldn't find any orders matching "{searchQuery}".
+                  We could not find any orders matching &quot;{searchQuery}&quot;.
                 </Text>
               </View>
             ) : (
-            filteredOrders.map((order) => (
-              <View key={order.id} style={styles.card}>
+            filteredOrders.map((order, idx) => (
+              <View key={order.orderId || idx} style={styles.card}>
                 <View style={[styles.rowSpaceBetween, { marginBottom: 12 }]}>
                   <View>
-                    <Text style={styles.orderId}>Order #{order.id}</Text>
+                    <Text style={styles.orderId}>Order #{order.orderId}</Text>
                     <Text style={styles.orderDate}>Placed on {order.date}</Text>
                   </View>
                   <View style={[styles.badge, { backgroundColor: order.statusColor + '15', borderColor: order.statusColor + '30', borderWidth: 1 }]}>
@@ -211,7 +232,7 @@ export default function PharmacyScreen({ navigation }) {
                 
                 <View style={styles.divider} />
 
-                {order.items.map((item, idx) => (
+                {order.items?.map((item, idx) => (
                   <View key={idx} style={{ marginBottom: 12 }}>
                     <Text style={styles.medication}>{item.name}</Text>
                     <Text style={styles.quantity}>Quantity: {item.qty}</Text>
@@ -231,9 +252,9 @@ export default function PharmacyScreen({ navigation }) {
                   </View>
                 </View>
 
-                {order.buttons.length > 0 && (
+                {order.buttons?.length > 0 && (
                   <View style={styles.buttonRow}>
-                    {order.buttons.map((btn, idx) => (
+                    {order.buttons?.map((btn, idx) => (
                       <TouchableOpacity 
                         key={idx} 
                         style={[styles.actionButton, btn.primary ? styles.btnPrimary : styles.btnOutline]}
@@ -312,7 +333,7 @@ export default function PharmacyScreen({ navigation }) {
             
             {trackedOrder && (
               <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 24 }}>
-                <Text style={styles.trackingOrderId}>Order #{trackedOrder.id}</Text>
+                <Text style={styles.trackingOrderId}>Order #{trackedOrder.orderId}</Text>
                 
                 <View style={styles.mapContainer}>
                   <MapView
