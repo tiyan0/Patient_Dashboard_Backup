@@ -134,7 +134,7 @@ export default function PhysicalTherapyScreen({ navigation }) {
                   <Ionicons name="play-circle-outline" size={16} color="#089FB4" style={{ marginRight: 4 }} />
                   <Text style={styles.exOutlineBtnText}>Watch Video</Text>
                 </TouchableOpacity>
-                <TouchableOpacity style={styles.exBlueBtn} onPress={() => toggleExercise(ex.id)}>
+                <TouchableOpacity style={styles.exBlueBtn} onPress={() => {}}>
                   <Ionicons name="checkmark" size={16} color="#FFFFFF" style={{ marginRight: 4 }} />
                   <Text style={styles.exBlueBtnText}>Mark Complete</Text>
                 </TouchableOpacity>
@@ -351,12 +351,11 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   metricsRow: {
-    flexDirection: 'row',
+    flexDirection: 'column',
     gap: 12,
     marginBottom: 20,
   },
   metricCard: {
-    flex: 1,
     backgroundColor: '#FFFFFF',
     borderRadius: 12,
     padding: 12,

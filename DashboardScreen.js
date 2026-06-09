@@ -42,7 +42,10 @@ export default function DashboardScreen({ navigation, route }) {
         if (data && data.length > 0) {
           // Sort so the newest referrals show up at the top
           const sortedData = data.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
-          setPendingReferrals(sortedData);
+          setPendingReferrals(prev => {
+            const newItems = sortedData.filter(sd => !prev.some(p => (p.id && p.id === sd.id) || p.title === sd.title));
+            return [...newItems, ...prev];
+          });
         }
       })
       .catch((err) => console.error('Error fetching referrals from API:', err));

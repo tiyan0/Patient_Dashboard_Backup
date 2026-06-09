@@ -26,6 +26,8 @@ module.exports = {
 
       return res.status(200).send({ message: 'Successfully authenticated', user: foundAccount });
     } catch (err) {
+
+      
       return res.status(500).send({ error: 'Internal system error', details: String(err) });
     }
   },
@@ -42,6 +44,8 @@ module.exports = {
       const newlyCreatedAccount = await User.create(req.body).fetch();
       return res.status(201).send(newlyCreatedAccount);
     } catch (err) {
+
+      console.log("REAL REGISTRATION ERROR: ", err); 
       return res.status(500).send({ error: 'System error during registration', details: String(err) });
     }
   },

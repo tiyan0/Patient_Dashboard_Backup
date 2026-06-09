@@ -85,7 +85,10 @@ export default function PharmacyScreen({ navigation }) {
       })
       .then((data) => {
         if (data && data.length > 0) {
-          setOrders(data);
+          setOrders(prev => {
+            const newItems = data.filter(d => !prev.some(p => p.orderId === d.orderId));
+            return [...newItems, ...prev];
+          });
         }
       })
       .catch((err) => console.error('Error fetching pharmacy orders:', err));
@@ -258,16 +261,7 @@ export default function PharmacyScreen({ navigation }) {
                       <TouchableOpacity 
                         key={idx} 
                         style={[styles.actionButton, btn.primary ? styles.btnPrimary : styles.btnOutline]}
-                        onPress={() => {
-                          if (btn.label === 'Track Order') {
-                            setTrackedOrder(order);
-                            setTrackingModalVisible(true);
-                          } else if (btn.label === 'Contact Pharmacy') {
-                            navigation.navigate('Messages', { chatId: 'pharmacy_1' });
-                          } else if (btn.label === 'Get Directions') {
-                            openDirections(order.deliveryText);
-                          }
-                        }}
+                        onPress={() => {}}
                       >
                         <Text style={[styles.actionButtonText, btn.primary ? styles.btnPrimaryText : styles.btnOutlineText]}>
                           {btn.label}
@@ -309,7 +303,7 @@ export default function PharmacyScreen({ navigation }) {
                   <TouchableOpacity style={[styles.actionButton, styles.btnOutline]} onPress={() => togglePreferred(pharmacy.id)}>
                     <Text style={styles.btnOutlineText}>{pharmacy.preferred ? 'Remove Preferred' : 'Set as Preferred'}</Text>
                   </TouchableOpacity>
-                  <TouchableOpacity style={[styles.actionButton, styles.btnOutline]} onPress={() => openDirections(pharmacy.address)}>
+                  <TouchableOpacity style={[styles.actionButton, styles.btnOutline]} onPress={() => {}}>
                     <Text style={styles.btnOutlineText}>Directions</Text>
                   </TouchableOpacity>
                 </View>

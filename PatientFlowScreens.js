@@ -224,7 +224,10 @@ export function AppointmentsScreen({ navigation, route }) {
               ...appt,
               actions: appt.type?.toLowerCase().includes('video') ? ['Join Call', 'Message'] : ['Message']
             }));
-            setUpcomingAppointments(formattedData);
+            setUpcomingAppointments(prev => {
+              const newItems = formattedData.filter(fd => !prev.some(p => p.id === fd.id));
+              return [...newItems, ...prev];
+            });
           }
         })
         .catch((err) => console.error('Error fetching appointments from API:', err));
@@ -399,11 +402,11 @@ export function PrescriptionsScreen({ navigation }) {
       subtitle: '20 mg • every evening',
       prescriber: 'Dr. Sarah Johnson',
       since: 'Dec 05, 2025',
-      daysRemaining: 0,
+      daysRemaining: 5,
       totalDays: 30,
-      nextRefill: 'N/A',
-      status: 'Action Required',
-      color: '#EF4444',
+      nextRefill: 'April 5, 2026',
+      status: 'Refill Soon',
+      color: '#089FB4',
       icon: 'medkit-outline'
     },
     {
@@ -432,7 +435,10 @@ export function PrescriptionsScreen({ navigation }) {
       })
       .then((data) => {
         if (data && data.length > 0) {
-          setPrescriptions(data);
+          setPrescriptions(prev => {
+            const newItems = data.filter(d => !prev.some(p => (p.id && p.id === d.id) || p.name === d.name));
+            return [...newItems, ...prev];
+          });
         }
       })
       .catch((err) => console.error('Error fetching prescriptions:', err));
@@ -469,9 +475,6 @@ export function PrescriptionsScreen({ navigation }) {
       <Screen title="Prescriptions" subtitle="Manage your medications" icon="document-text-outline" navigation={navigation}>
       <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 0, marginBottom: 12, paddingHorizontal: 4 }}>
         <Text style={[styles.sectionHeader, { marginTop: 0, marginBottom: 0, paddingHorizontal: 0 }]}>Active Medications</Text>
-        <TouchableOpacity onPress={() => navigation.navigate('RenewalRequests')}>
-          <Text style={{ color: cyan, fontSize: 13, fontWeight: '700' }}>View Renewals</Text>
-        </TouchableOpacity>
       </View>
 
       {/* Refill Reminder */}
@@ -489,6 +492,7 @@ export function PrescriptionsScreen({ navigation }) {
             setRenewalMed({ name: 'Atorvastatin', prescriber: 'Dr. Sarah Johnson' });
             setShowRenewalModal(true);
           }}
+          onPress={() => {}}
         >
           <Text style={{ color: '#FFFFFF', fontSize: 12, fontWeight: '800' }}>Refill Now</Text>
         </TouchableOpacity>
@@ -537,10 +541,7 @@ export function PrescriptionsScreen({ navigation }) {
             </View>
             <TouchableOpacity 
               style={[styles.outlineButton, { flex: 0, paddingHorizontal: 16, backgroundColor: med.color === '#EF4444' ? '#EF4444' : cyan, borderColor: med.color === '#EF4444' ? '#EF4444' : cyan }]}
-              onPress={() => {
-                setRenewalMed(med);
-                setShowRenewalModal(true);
-              }}
+              onPress={() => {}}
             >
               <Text style={[styles.outlineButtonText, { color: '#FFFFFF' }]}>
                 {med.daysRemaining === 0 ? 'Request Renewal' : 'Refill Now'}
@@ -611,7 +612,7 @@ export function PrescriptionsScreen({ navigation }) {
             <Text style={styles.bodyText}>Set up automated reminders to never miss a dose</Text>
           </View>
         </View>
-        <PrimaryButton label="Add Reminder" icon="add" onPress={() => setShowReminderModal(true)} />
+        <PrimaryButton label="Configure Reminders" icon="add" onPress={() => {}} />
       </Card>
       </Screen>
 
@@ -825,7 +826,7 @@ export function AuthScreen({ navigation }) {
                   <Ionicons name={showPassword ? "eye-off-outline" : "eye-outline"} size={20} color={muted} />
                 </TouchableOpacity>
               </View>
-              <TouchableOpacity style={{ alignSelf: 'flex-end', marginTop: 8 }} onPress={handleForgotPassword}>
+              <TouchableOpacity style={{ alignSelf: 'flex-end', marginTop: 8 }} onPress={() => {}}>
                 <Text style={{ color: cyan, fontSize: 12, fontWeight: '700' }}>Forgot Password?</Text>
               </TouchableOpacity>
             </View>
@@ -854,59 +855,25 @@ export function AuthScreen({ navigation }) {
 }
 
 export function CreateProfileScreen({ navigation }) {
-  const [profileImage, setProfileImage] = useState(null);
+  const [firstName, setFirstName] = useState('');
+  const [lastName, setLastName] = useState('');
   const [dob, setDob] = useState(null);
   const [showDobPicker, setShowDobPicker] = useState(false);
+  const [phone, setPhone] = useState('');
+  const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-  const [bloodType, setBloodType] = useState('');
-  const [showBloodTypeDropdown, setShowBloodTypeDropdown] = useState(false);
-  const [emergencyRelationship, setEmergencyRelationship] = useState('');
-  const [otherRelationship, setOtherRelationship] = useState('');
-  const [emergencyEmail, setEmergencyEmail] = useState('');
-  const [firstName, setFirstName] = useState('');
-  const [lastName, setLastName] = useState('');
-  const [gender, setGender] = useState('');
-  const [address, setAddress] = useState('');
-  const [email, setEmail] = useState('');
-  const [allergies, setAllergies] = useState('');
-  const [emergencyName, setEmergencyName] = useState('');
-  const [emergencyPhone, setEmergencyPhone] = useState('');
-  const [phone, setPhone] = useState('');
-
-  const handleImagePick = async () => {
-    let result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
-      allowsEditing: true,
-      aspect: [1, 1],
-      quality: 0.5,
-      base64: true,
-    });
-    if (!result.canceled) {
-      setProfileImage(`data:image/jpeg;base64,${result.assets[0].base64}`);
-    }
-  };
 
   const passwordsMatch = password === confirmPassword;
   const isEmailValid = email === '' || (email.includes('@') && email.includes('.'));
-  const isEmergencyEmailValid = emergencyEmail === '' || (emergencyEmail.includes('@') && emergencyEmail.includes('.'));
   const isPhoneValid = phone === '' || phone.replace(/\D/g, '').length === 12;
-  const isEmergencyPhoneValid = emergencyPhone === '' || emergencyPhone.replace(/\D/g, '').length === 12;
 
-  const canSubmit = firstName.trim() !== '' && lastName.trim() !== '' && gender !== '' && address.trim() !== '' && dob !== null && 
+  const canSubmit = firstName.trim() !== '' && lastName.trim() !== '' && dob !== null && 
     email.includes('@') && email.includes('.') && 
     phone.replace(/\D/g, '').length === 12 && 
-    password !== '' && passwordsMatch && 
-    bloodType !== '' && 
-    emergencyName.trim() !== '' && 
-    emergencyRelationship !== '' &&
-    emergencyPhone.replace(/\D/g, '').length === 12 && 
-    (emergencyRelationship !== 'Other' || otherRelationship.trim() !== '') &&
-    emergencyEmail.includes('@') && emergencyEmail.includes('.');
-
-  const bloodTypes = ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-', 'Unknown'];
+    password !== '' && passwordsMatch;
 
   const handleRegister = async () => {
     try {
@@ -917,19 +884,19 @@ export function CreateProfileScreen({ navigation }) {
         body: JSON.stringify({
           firstName,
           lastName,
-          gender,
-          address,
           email,
           password,
           phone,
-          bloodType,
-          allergies,
-          emergencyName,
-          emergencyPhone,
-          emergencyEmail,
-          dob: dob.toLocaleDateString(),
-          emergencyRelationship: emergencyRelationship === 'Other' ? otherRelationship : emergencyRelationship,
-          profileImage
+          dob: dob ? dob.toLocaleDateString() : '01/01/1990',
+          gender: 'Other',
+          address: 'Not provided',
+          bloodType: 'Unknown',
+          allergies: 'None',
+          emergencyName: 'Not provided',
+          emergencyPhone: '+63 000-000-0000',
+          emergencyEmail: 'none@example.com',
+          emergencyRelationship: 'Other',
+          profileImage: `https://ui-avatars.com/api/?name=${encodeURIComponent(firstName)}+${encodeURIComponent(lastName)}&background=089FB4&color=fff&size=256`
         })
       });
       
@@ -955,48 +922,61 @@ export function CreateProfileScreen({ navigation }) {
   };
 
   return (
-    <Screen title="Create Profile" subtitle="Tell us about yourself" icon="person-add-outline" navigation={navigation}>
+    <Screen title="Create Account" subtitle="Let's get started" icon="person-add-outline" navigation={navigation}>
       <Card>
-        <View style={{ alignItems: 'center', marginBottom: 20 }}>
-          <TouchableOpacity onPress={handleImagePick} style={{ width: 80, height: 80, borderRadius: 40, backgroundColor: '#E8F6FA', alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: cyan, borderStyle: 'dashed', overflow: 'hidden' }}>
-            {profileImage ? <Image source={{ uri: profileImage }} style={{ width: '100%', height: '100%' }} /> : <Ionicons name="camera-outline" size={28} color={cyan} />}
-          </TouchableOpacity>
-          <Text style={{ color: cyan, fontSize: 12, fontWeight: '700', marginTop: 8 }}>Upload Photo</Text>
-        </View>
-
         <View style={styles.inputGroup}><Text style={styles.inputLabel}>First Name *</Text><TextInput style={styles.textInput} placeholder="e.g. Sarah" placeholderTextColor="#94A3B8" value={firstName} onChangeText={setFirstName} /></View>
         <View style={styles.inputGroup}><Text style={styles.inputLabel}>Last Name *</Text><TextInput style={styles.textInput} placeholder="e.g. Williams" placeholderTextColor="#94A3B8" value={lastName} onChangeText={setLastName} /></View>
-        
-        <View style={styles.inputGroup}>
-          <Text style={styles.inputLabel}>Gender *</Text>
-          <View style={{ flexDirection: 'row', gap: 8 }}>
-            {['Male', 'Female', 'Other'].map(g => (
-              <TouchableOpacity key={g} style={{ flex: 1, height: 44, borderRadius: 8, borderWidth: 1, borderColor: gender === g ? cyan : '#CBD5E1', backgroundColor: gender === g ? '#E8F6FA' : '#FFFFFF', alignItems: 'center', justifyContent: 'center' }} onPress={() => setGender(g)}>
-                <Text style={{ color: gender === g ? cyan : ink, fontWeight: '700', fontSize: 13 }}>{g}</Text>
-              </TouchableOpacity>
-            ))}
-          </View>
-        </View>
-
-        <View style={styles.inputGroup}><Text style={styles.inputLabel}>Address *</Text><TextInput style={styles.textInput} placeholder="e.g. 123 Main St, City" placeholderTextColor="#94A3B8" value={address} onChangeText={setAddress} /></View>
         
         <View style={styles.inputGroup}>
           <Text style={styles.inputLabel}>Date of Birth *</Text>
           <TouchableOpacity style={[styles.textInput, { justifyContent: 'center' }]} onPress={() => setShowDobPicker(true)}>
             <Text style={{ color: dob ? ink : '#94A3B8' }}>{dob ? dob.toLocaleDateString() : 'Select your birthday'}</Text>
           </TouchableOpacity>
+          
           {showDobPicker && (
-            <View style={{ alignItems: 'flex-start', marginTop: 8, marginBottom: 8 }}>
+            Platform.OS === 'ios' ? (
+              <Modal transparent={true} animationType="fade" visible={showDobPicker} onRequestClose={() => setShowDobPicker(false)}>
+                <View style={{ flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.4)' }}>
+                  <TouchableWithoutFeedback onPress={() => setShowDobPicker(false)}>
+                    <View style={{ flex: 1 }} />
+                  </TouchableWithoutFeedback>
+                  <View style={{ backgroundColor: '#FFFFFF', paddingBottom: 30, borderTopLeftRadius: 16, borderTopRightRadius: 16 }}>
+                    <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 16, borderBottomWidth: 1, borderBottomColor: '#F1F5F9' }}>
+                      <Text style={{ color: ink, fontSize: 16, fontWeight: '700' }}>Select Birthday</Text>
+                      <TouchableOpacity onPress={() => setShowDobPicker(false)}>
+                        <Text style={{ color: cyan, fontSize: 16, fontWeight: '800' }}>Done</Text>
+                      </TouchableOpacity>
+                    </View>
+                    <View style={{ alignItems: 'center', width: '100%' }}>
+                      <DateTimePicker 
+                        value={dob || new Date(1990, 0, 1)} 
+                        mode="date" 
+                        display="spinner" 
+                        maximumDate={new Date()}
+                        textColor="#000000"
+                        style={{ height: 200, width: 320, backgroundColor: '#FFFFFF' }}
+                        onChange={(e, d) => {
+                          if (d) setDob(d);
+                        }} 
+                      />
+                    </View>
+                  </View>
+                </View>
+              </Modal>
+            ) : (
               <DateTimePicker 
                 value={dob || new Date(1990, 0, 1)} 
                 mode="date" 
-                display="default" 
-                onChange={(e, d) => {
-                  if (Platform.OS === 'android') setShowDobPicker(false);
-                  if (d) setDob(d);
+                display="spinner" 
+                maximumDate={new Date()}
+                onChange={(event, selectedDate) => {
+                  setShowDobPicker(false);
+                  if (event.type === 'set' && selectedDate) {
+                    setDob(selectedDate);
+                  }
                 }} 
               />
-            </View>
+            )
           )}
         </View>
         
@@ -1031,59 +1011,10 @@ export function CreateProfileScreen({ navigation }) {
           {(!passwordsMatch && confirmPassword.length > 0) && <Text style={{ color: '#EF4444', fontSize: 12, marginTop: 4 }}>Passwords do not match.</Text>}
         </View>
         
-        <View style={styles.inputGroup}>
-          <Text style={styles.inputLabel}>Blood Type *</Text>
-          <TouchableOpacity style={[styles.textInput, { justifyContent: 'center' }]} onPress={() => setShowBloodTypeDropdown(!showBloodTypeDropdown)}>
-            <View style={{ flexDirection: 'row', alignItems: 'center', width: '100%' }}>
-              <Text style={{ flex: 1, color: bloodType ? ink : '#94A3B8' }}>{bloodType || 'Select blood type'}</Text>
-              <Ionicons name={showBloodTypeDropdown ? "chevron-up" : "chevron-down"} size={18} color={muted} style={{ position: 'absolute', right: 0 }} />
-            </View>
-          </TouchableOpacity>
-          {showBloodTypeDropdown && (
-            <View style={{ backgroundColor: '#F8FAFC', borderRadius: 8, borderWidth: 1, borderColor: '#E2E8F0', padding: 8, marginTop: 8, maxHeight: 160 }}>
-              <ScrollView nestedScrollEnabled>
-                {bloodTypes.map(type => (
-                  <TouchableOpacity key={type} style={{ paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: '#F1F5F9', alignItems: 'center' }} onPress={() => { setBloodType(type); setShowBloodTypeDropdown(false); }}>
-                    <Text style={{ color: ink, fontSize: 14 }}>{type}</Text>
-                  </TouchableOpacity>
-                ))}
-              </ScrollView>
-            </View>
-          )}
-        </View>
-        <View style={styles.inputGroup}><Text style={styles.inputLabel}>Allergies</Text><TextInput style={styles.textInput} placeholder="List any allergies" placeholderTextColor="#94A3B8" value={allergies} onChangeText={setAllergies} /></View>
-        <Text style={[styles.sectionHeader, { marginTop: 8, paddingHorizontal: 0 }]}>Emergency Contact</Text>
-        <View style={styles.inputGroup}><Text style={styles.inputLabel}>Name of Emergency Contact *</Text><TextInput style={styles.textInput} placeholder="Emergency contact name" placeholderTextColor="#94A3B8" value={emergencyName} onChangeText={setEmergencyName} /></View>
-        <View style={styles.inputGroup}>
-          <Text style={styles.inputLabel}>Relationship to Patient *</Text>
-          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
-            {['Mother', 'Father', 'Spouse', 'Sibling', 'Aunt', 'Uncle', 'Cousin', 'Grandfather', 'Grandmother', 'Friend', 'Other'].map(r => (
-              <TouchableOpacity key={r} style={{ width: '31%', height: 44, borderRadius: 8, borderWidth: 1, borderColor: emergencyRelationship === r ? cyan : '#CBD5E1', backgroundColor: emergencyRelationship === r ? '#E8F6FA' : '#FFFFFF', alignItems: 'center', justifyContent: 'center', marginBottom: 4 }} onPress={() => setEmergencyRelationship(r)}>
-                <Text style={{ color: emergencyRelationship === r ? cyan : ink, fontWeight: '700', fontSize: 12 }} numberOfLines={1} adjustsFontSizeToFit>{r}</Text>
-              </TouchableOpacity>
-            ))}
-          </View>
-          {emergencyRelationship === 'Other' && (
-            <TextInput 
-              style={[styles.textInput, { marginTop: 8 }]} 
-              placeholder="Please Specify" 
-              placeholderTextColor="#94A3B8" 
-              value={otherRelationship} 
-              onChangeText={setOtherRelationship} 
-            />
-          )}
-        </View>
-        <View style={styles.inputGroup}>
-          <Text style={styles.inputLabel}>Phone Number of Emergency Contact *</Text>
-          <TextInput style={[styles.textInput, !isEmergencyPhoneValid && emergencyPhone.length > 0 && { borderColor: '#EF4444' }]} placeholder="+63 XXX-XXX-XXXX" placeholderTextColor="#94A3B8" keyboardType="phone-pad" value={emergencyPhone} onChangeText={(t) => setEmergencyPhone(formatPhoneNumber(t))} maxLength={16} />
-          {(!isEmergencyPhoneValid && emergencyPhone.length > 0) && <Text style={{ color: '#EF4444', fontSize: 12, marginTop: 4 }}>Phone number must be complete.</Text>}
-        </View>
-        <View style={styles.inputGroup}>
-          <Text style={styles.inputLabel}>Email of Emergency Contact *</Text>
-          <TextInput style={[styles.textInput, !isEmergencyEmailValid && { borderColor: '#EF4444' }]} placeholder="Emergency contact email" placeholderTextColor="#94A3B8" autoCapitalize="none" keyboardType="email-address" value={emergencyEmail} onChangeText={setEmergencyEmail} />
-          {!isEmergencyEmailValid && <Text style={{ color: '#EF4444', fontSize: 12, marginTop: 4 }}>Please enter a valid email address.</Text>}
-        </View>
-        <PrimaryButton label="Complete Registration" icon="checkmark-circle-outline" onPress={handleRegister} color={canSubmit ? cyan : '#CBD5E1'} disabled={!canSubmit} />
+        <PrimaryButton label="Create Account" icon="checkmark-circle-outline" onPress={handleRegister} color={canSubmit ? cyan : '#CBD5E1'} disabled={!canSubmit} />
+        <Text style={{ textAlign: 'center', color: muted, fontSize: 12, marginTop: 16 }}>
+          You can add your medical history and emergency contacts later in your Profile settings.
+        </Text>
       </Card>
     </Screen>
   );
@@ -1098,19 +1029,19 @@ export function EditProfileScreen({ navigation, route }) {
   const [gender, setGender] = useState(currentProfile.gender || 'Female');
   const [bloodType, setBloodType] = useState(currentProfile.bloodType || 'O+');
   const [showBloodTypeDropdown, setShowBloodTypeDropdown] = useState(false);
-  const relationshipOptions = ['Mother', 'Father', 'Spouse', 'Sibling', 'Aunt', 'Uncle', 'Cousin', 'Grandfather', 'Grandmother', 'Friend', 'Other'];
+  const relationshipOptions = ['Mother', 'Father', 'Spouse', 'Other'];
   const initialRel = currentProfile.emergencyRelationship || 'Spouse';
   const [emergencyRelationship, setEmergencyRelationship] = useState(relationshipOptions.includes(initialRel) ? initialRel : 'Other');
   const [otherRelationship, setOtherRelationship] = useState(relationshipOptions.includes(initialRel) ? '' : initialRel);
-  const [emergencyEmail, setEmergencyEmail] = useState(currentProfile.emergencyEmail || 'john.williams@example.com');
-  const [phone, setPhone] = useState(formatPhoneNumber(currentProfile.phone || '09123456789'));
-  const [firstName, setFirstName] = useState(currentProfile.firstName || 'Sarah');
-  const [lastName, setLastName] = useState(currentProfile.lastName || 'Williams');
-  const [address, setAddress] = useState(currentProfile.address || 'Oklahoma City, OK');
-  const [email, setEmail] = useState(currentProfile.email || 'sarah@example.com');
-  const [allergies, setAllergies] = useState(currentProfile.allergies || 'Penicillin, Peanuts');
-  const [emergencyName, setEmergencyName] = useState(currentProfile.emergencyName || 'John Williams');
-  const [emergencyPhone, setEmergencyPhone] = useState(formatPhoneNumber(currentProfile.emergencyPhone || '09987654321'));
+  const [emergencyEmail, setEmergencyEmail] = useState(currentProfile.emergencyEmail && !['Not provided', 'none@example.com', 'john.williams@example.com'].includes(currentProfile.emergencyEmail) ? currentProfile.emergencyEmail : '');
+  const [phone, setPhone] = useState(formatPhoneNumber(currentProfile.phone && !['Not provided', '+63 000-000-0000', '+63 912-345-6789'].includes(currentProfile.phone) ? currentProfile.phone : ''));
+  const [firstName, setFirstName] = useState(currentProfile.firstName && !['Not provided', 'Sarah'].includes(currentProfile.firstName) ? currentProfile.firstName : '');
+  const [lastName, setLastName] = useState(currentProfile.lastName && !['Not provided', 'Williams'].includes(currentProfile.lastName) ? currentProfile.lastName : '');
+  const [address, setAddress] = useState(currentProfile.address && !['Not provided', 'Oklahoma City, OK'].includes(currentProfile.address) ? currentProfile.address : '');
+  const [email, setEmail] = useState(currentProfile.email && !['Not provided', 'sarah@example.com'].includes(currentProfile.email) ? currentProfile.email : '');
+  const [allergies, setAllergies] = useState(currentProfile.allergies && !['Not provided', 'None', 'Penicillin, Peanuts'].includes(currentProfile.allergies) ? currentProfile.allergies : '');
+  const [emergencyName, setEmergencyName] = useState(currentProfile.emergencyName && !['Not provided', 'John Williams'].includes(currentProfile.emergencyName) ? currentProfile.emergencyName : '');
+  const [emergencyPhone, setEmergencyPhone] = useState(formatPhoneNumber(currentProfile.emergencyPhone && !['Not provided', '+63 000-000-0000', '+63 998-765-4321'].includes(currentProfile.emergencyPhone) ? currentProfile.emergencyPhone : ''));
   const [currentPassword, setCurrentPassword] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -1125,14 +1056,7 @@ export function EditProfileScreen({ navigation, route }) {
   const isEmergencyPhoneValid = emergencyPhone === '' || emergencyPhone.replace(/\D/g, '').length === 12;
   const passwordsMatch = password === confirmPassword;
 
-  const canSubmit = firstName.trim() !== '' && lastName.trim() !== '' && address.trim() !== '' &&
-    email.includes('@') && email.includes('.') && 
-    phone.replace(/\D/g, '').length === 12 && 
-    bloodType !== '' && emergencyName.trim() !== '' && 
-    emergencyPhone.replace(/\D/g, '').length === 12 && 
-    (emergencyRelationship !== 'Other' || otherRelationship.trim() !== '') &&
-    emergencyEmail.includes('@') && emergencyEmail.includes('.') &&
-    (password === '' || (passwordsMatch && currentPassword !== ''));
+  const canSubmit = password === '' || (passwordsMatch && currentPassword !== '');
 
   const handleImagePick = async () => {
     let result = await ImagePicker.launchImageLibraryAsync({
@@ -1149,7 +1073,19 @@ export function EditProfileScreen({ navigation, route }) {
 
   const handleUpdateProfile = async () => {
     const payload = {
-      firstName, lastName, gender, email, phone, address, bloodType, allergies, emergencyName, emergencyPhone, emergencyEmail, emergencyRelationship: emergencyRelationship === 'Other' ? otherRelationship : emergencyRelationship, profileImage
+      firstName: firstName.trim() || 'Not provided',
+      lastName: lastName.trim() || 'Not provided',
+      gender,
+      email: email.trim() || 'Not provided',
+      phone: phone.trim() || 'Not provided',
+      address: address.trim() || 'Not provided',
+      bloodType: bloodType || 'Not provided',
+      allergies: allergies.trim() || 'None',
+      emergencyName: emergencyName.trim() || 'Not provided',
+      emergencyPhone: emergencyPhone.trim() || 'Not provided',
+      emergencyEmail: emergencyEmail.trim() || 'Not provided',
+      emergencyRelationship: emergencyRelationship === 'Other' ? (otherRelationship.trim() || 'Not provided') : emergencyRelationship,
+      profileImage
     };
 
     if (password !== '') {
@@ -1189,7 +1125,7 @@ export function EditProfileScreen({ navigation, route }) {
     }
   };
 
-  const initials = `${firstName.charAt(0)}${lastName.charAt(0)}`.toUpperCase();
+  const initials = `${(firstName || 'O').charAt(0)}${(lastName || '+').charAt(0)}`.toUpperCase();
 
   return (
     <Screen scrollViewRef={scrollViewRef} title="Edit Profile" subtitle="Update your personal details" icon="create-outline" navigation={navigation}>
@@ -1201,8 +1137,8 @@ export function EditProfileScreen({ navigation, route }) {
           <Text style={{ color: cyan, fontSize: 12, fontWeight: '700', marginTop: 8 }}>Change Photo</Text>
         </View>
 
-        <View style={styles.inputGroup}><Text style={styles.inputLabel}>First Name *</Text><TextInput style={styles.textInput} value={firstName} onChangeText={setFirstName} placeholderTextColor="#94A3B8" /></View>
-        <View style={styles.inputGroup}><Text style={styles.inputLabel}>Last Name *</Text><TextInput style={styles.textInput} value={lastName} onChangeText={setLastName} placeholderTextColor="#94A3B8" /></View>
+        <View style={styles.inputGroup}><Text style={styles.inputLabel}>First Name *</Text><TextInput style={styles.textInput} value={firstName} onChangeText={setFirstName} placeholder="e.g. Sarah" placeholderTextColor="#94A3B8" /></View>
+        <View style={styles.inputGroup}><Text style={styles.inputLabel}>Last Name *</Text><TextInput style={styles.textInput} value={lastName} onChangeText={setLastName} placeholder="e.g. Williams" placeholderTextColor="#94A3B8" /></View>
         
         <View style={styles.inputGroup}>
           <Text style={styles.inputLabel}>Gender *</Text>
@@ -1215,16 +1151,16 @@ export function EditProfileScreen({ navigation, route }) {
           </View>
         </View>
 
-        <View style={styles.inputGroup}><Text style={styles.inputLabel}>Address *</Text><TextInput style={styles.textInput} value={address} onChangeText={setAddress} placeholderTextColor="#94A3B8" /></View>
+        <View style={styles.inputGroup}><Text style={styles.inputLabel}>Address *</Text><TextInput style={styles.textInput} value={address} onChangeText={setAddress} placeholder="e.g. Oklahoma City, OK" placeholderTextColor="#94A3B8" /></View>
         <View style={styles.inputGroup}>
           <Text style={styles.inputLabel}>Email *</Text>
-          <TextInput style={[styles.textInput, !isEmailValid && email.length > 0 && { borderColor: '#EF4444' }]} value={email} onChangeText={setEmail} placeholderTextColor="#94A3B8" autoCapitalize="none" keyboardType="email-address" />
+          <TextInput style={[styles.textInput, !isEmailValid && email.length > 0 && { borderColor: '#EF4444' }]} value={email} onChangeText={setEmail} placeholder="e.g. sarah@example.com" placeholderTextColor="#94A3B8" autoCapitalize="none" keyboardType="email-address" />
           {(!isEmailValid && email.length > 0) && <Text style={{ color: '#EF4444', fontSize: 12, marginTop: 4 }}>Please enter a valid email address.</Text>}
         </View>
         
         <View style={styles.inputGroup}>
           <Text style={styles.inputLabel}>Phone Number *</Text>
-          <TextInput style={[styles.textInput, !isPhoneValid && phone.length > 0 && { borderColor: '#EF4444' }]} placeholder="+63 XXX-XXX-XXXX" placeholderTextColor="#94A3B8" keyboardType="phone-pad" value={phone} onChangeText={(t) => setPhone(formatPhoneNumber(t))} maxLength={16} />
+          <TextInput style={[styles.textInput, !isPhoneValid && phone.length > 0 && { borderColor: '#EF4444' }]} placeholder="e.g. +63 912-345-6789" placeholderTextColor="#94A3B8" keyboardType="phone-pad" value={phone} onChangeText={(t) => setPhone(formatPhoneNumber(t))} maxLength={16} />
           {(!isPhoneValid && phone.length > 0) && <Text style={{ color: '#EF4444', fontSize: 12, marginTop: 4 }}>Phone number must be complete.</Text>}
         </View>
 
@@ -1279,9 +1215,12 @@ export function EditProfileScreen({ navigation, route }) {
             </View>
           )}
         </View>
-        <View style={styles.inputGroup}><Text style={styles.inputLabel}>Allergies</Text><TextInput style={styles.textInput} value={allergies} onChangeText={setAllergies} placeholderTextColor="#94A3B8" /></View>
+        <View style={styles.inputGroup}>
+          <Text style={styles.inputLabel}>Allergies</Text>
+          <TextInput style={[styles.textInput, { height: 'auto', minHeight: 48, paddingTop: 12, paddingBottom: 12 }]} multiline value={allergies} onChangeText={setAllergies} placeholder="e.g. Penicillin, Peanuts" placeholderTextColor="#94A3B8" />
+        </View>
         <Text style={[styles.sectionHeader, { marginTop: 8, paddingHorizontal: 0 }]}>Emergency Contact</Text>
-        <View style={styles.inputGroup}><Text style={styles.inputLabel}>Name of Emergency Contact *</Text><TextInput style={styles.textInput} value={emergencyName} onChangeText={setEmergencyName} placeholderTextColor="#94A3B8" /></View>
+        <View style={styles.inputGroup}><Text style={styles.inputLabel}>Name of Emergency Contact *</Text><TextInput style={styles.textInput} value={emergencyName} onChangeText={setEmergencyName} placeholder="e.g. John Williams" placeholderTextColor="#94A3B8" /></View>
         <View style={styles.inputGroup}>
           <Text style={styles.inputLabel}>Relationship to Patient *</Text>
           <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
@@ -1303,13 +1242,13 @@ export function EditProfileScreen({ navigation, route }) {
         </View>
         <View style={styles.inputGroup}>
           <Text style={styles.inputLabel}>Phone Number of Emergency Contact *</Text>
-          <TextInput style={[styles.textInput, !isEmergencyPhoneValid && emergencyPhone.length > 0 && { borderColor: '#EF4444' }]} placeholder="+63 XXX-XXX-XXXX" value={emergencyPhone} onChangeText={(t) => setEmergencyPhone(formatPhoneNumber(t))} placeholderTextColor="#94A3B8" keyboardType="phone-pad" maxLength={16} />
+          <TextInput style={[styles.textInput, !isEmergencyPhoneValid && emergencyPhone.length > 0 && { borderColor: '#EF4444' }]} placeholder="e.g. +63 998-765-4321" value={emergencyPhone} onChangeText={(t) => setEmergencyPhone(formatPhoneNumber(t))} placeholderTextColor="#94A3B8" keyboardType="phone-pad" maxLength={16} />
           {(!isEmergencyPhoneValid && emergencyPhone.length > 0) && <Text style={{ color: '#EF4444', fontSize: 12, marginTop: 4 }}>Phone number must be complete.</Text>}
         </View>
         <View style={styles.inputGroup}>
           <Text style={styles.inputLabel}>Email of Emergency Contact *</Text>
-          <TextInput style={[styles.textInput, !isEmergencyEmailValid && { borderColor: '#EF4444' }]} placeholder="Emergency contact email" placeholderTextColor="#94A3B8" autoCapitalize="none" keyboardType="email-address" value={emergencyEmail} onChangeText={setEmergencyEmail} />
-          {!isEmergencyEmailValid && <Text style={{ color: '#EF4444', fontSize: 12, marginTop: 4 }}>Please enter a valid email address.</Text>}
+          <TextInput style={[styles.textInput, !isEmergencyEmailValid && emergencyEmail.length > 0 && { borderColor: '#EF4444' }]} placeholder="e.g. none@example.com" placeholderTextColor="#94A3B8" autoCapitalize="none" keyboardType="email-address" value={emergencyEmail} onChangeText={setEmergencyEmail} />
+          {(!isEmergencyEmailValid && emergencyEmail.length > 0) && <Text style={{ color: '#EF4444', fontSize: 12, marginTop: 4 }}>Please enter a valid email address.</Text>}
         </View>
         <PrimaryButton 
           label="Save Changes" 
@@ -1327,6 +1266,7 @@ export function ProfileScreen({ navigation, route }) {
   const [useBiometrics, setUseBiometrics] = useState(true);
 
   const [profileData, setProfileData] = useState({
+    id: currentUser?.id,
     firstName: currentUser?.firstName || 'Sarah',
     lastName: currentUser?.lastName || 'Williams',
     gender: currentUser?.gender || 'Female',
@@ -1349,6 +1289,32 @@ export function ProfileScreen({ navigation, route }) {
       navigation.setParams({ updatedProfile: undefined });
     }
   }, [route?.params?.updatedProfile, navigation]);
+
+  useEffect(() => {
+    const unsubscribe = navigation.addListener('focus', () => {
+      if (currentUser) {
+        setProfileData(prev => ({
+          ...prev,
+          id: currentUser.id,
+          firstName: currentUser.firstName || 'Sarah',
+          lastName: currentUser.lastName || 'Williams',
+          gender: currentUser.gender || 'Female',
+          email: currentUser.email || 'sarah@example.com',
+          phone: currentUser.phone || '+63 912-345-6789',
+          address: currentUser.address || 'Oklahoma City, OK',
+          dob: currentUser.dob || '12/05/1990',
+          bloodType: currentUser.bloodType || 'O+',
+          allergies: currentUser.allergies || 'Penicillin, Peanuts',
+          emergencyName: currentUser.emergencyName || 'John Williams',
+          emergencyPhone: currentUser.emergencyPhone || '+63 998-765-4321',
+          emergencyEmail: currentUser.emergencyEmail || 'john.williams@example.com',
+          emergencyRelationship: currentUser.emergencyRelationship || 'Spouse',
+          profileImage: currentUser.profileImage || null,
+        }));
+      }
+    });
+    return unsubscribe;
+  }, [navigation]);
 
   const accountLinks = [
     { icon: 'person-outline', title: 'Personal Information', route: 'EditProfile' },
@@ -5550,8 +5516,10 @@ const styles = StyleSheet.create({
   // --- PROFILE SECTIONS ---
   sectionHeader: { color: ink, fontSize: 16, fontWeight: '800', marginTop: 18, marginBottom: 10, paddingHorizontal: 4 },
   infoRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: '#F1F5F9' },
+  infoRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: '#F1F5F9' },
   infoLabel: { color: muted, fontSize: 13, fontWeight: '600' },
   infoValue: { color: ink, fontSize: 13, fontWeight: '800', textAlign: 'right' },
+  infoValue: { flex: 1, marginLeft: 16, color: ink, fontSize: 13, fontWeight: '800', textAlign: 'right' },
   linkRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: 14, paddingHorizontal: 16, backgroundColor: '#FFFFFF' },
   linkIconBg: { width: 32, height: 32, borderRadius: 8, backgroundColor: '#F1FAFE', alignItems: 'center', justifyContent: 'center', marginRight: 12 },
   linkText: { flex: 1, color: ink, fontSize: 14, fontWeight: '700' },
