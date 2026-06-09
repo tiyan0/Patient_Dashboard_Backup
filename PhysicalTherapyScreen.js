@@ -351,11 +351,12 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   metricsRow: {
-    flexDirection: 'column',
-    gap: 12,
+    flexDirection: 'row',
+    gap: 8,
     marginBottom: 20,
   },
   metricCard: {
+    flex: 1,
     backgroundColor: '#FFFFFF',
     borderRadius: 12,
     padding: 12,
