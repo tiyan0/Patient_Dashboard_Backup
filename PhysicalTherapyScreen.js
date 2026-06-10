@@ -10,18 +10,22 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 
+import { currentUser } from './config';
+
 export default function PhysicalTherapyScreen({ navigation }) {
-  const [exercises, setExercises] = useState([
+  const isMockUser = !currentUser; // Use mock data only if no user is logged in
+
+  const [exercises, setExercises] = useState(isMockUser ? [
     { id: '1', name: 'Quad Sets', desc: '3 sets × 15 reps • 2x daily', completed: true },
     { id: '2', name: 'Straight Leg Raises', desc: '3 sets × 10 reps • 2x daily', completed: true },
     { id: '3', name: 'Heel Slides', desc: '3 sets × 12 reps • 2x daily', completed: false },
     { id: '4', name: 'Ankle Pumps', desc: '3 sets × 20 reps • 3x daily', completed: false },
-  ]);
+  ] : []);
 
-  const upcomingSessions = [
+  const upcomingSessions = isMockUser ? [
     { id: 's1', type: 'In-Person Session', focus: 'Strength & Mobility', status: 'Scheduled', date: 'April 2, 2026', time: '3:00 PM', location: 'PT Clinic - Room 201' },
     { id: 's2', type: 'In-Person Session', focus: 'Range of Motion', status: 'Scheduled', date: 'April 9, 2026', time: '3:00 PM', location: 'PT Clinic - Room 201' },
-  ];
+  ] : [];
 
   const toggleExercise = (id) => {
     setExercises(exercises.map(ex => ex.id === id ? { ...ex, completed: true } : ex));
@@ -62,135 +66,147 @@ export default function PhysicalTherapyScreen({ navigation }) {
           </TouchableOpacity>
         </View>
 
-        {/* Active Program Box */}
-        <View style={styles.card}>
-          <View style={styles.rowSpaceBetween}>
-            <View style={{ flex: 1 }}>
-              <Text style={styles.programTitle}>Knee Rehabilitation</Text>
-              <Text style={styles.programTherapist}>Dr. Emily Rodriguez, PT, DPT</Text>
-            </View>
-            <View style={styles.badgeActive}><Text style={styles.badgeActiveText}>Active</Text></View>
-          </View>
-          
-          <View style={{ marginTop: 16 }}>
-            <Text style={styles.progressLabel}>Progress <Text style={{fontWeight: '700', color: '#0F172A'}}>3 / 12 sessions</Text></Text>
-            <View style={styles.progressBar}>
-              <View style={[styles.progressFill, { width: '25%' }]} />
-            </View>
-          </View>
-
-          <View style={styles.nextSessionBox}>
-            <Text style={styles.nextSessionLabel}>Next Session</Text>
-            <Text style={styles.nextSessionValue}>April 2, 2026 • 3:00 PM</Text>
-            <View style={styles.nextSessionRow}>
-              <Ionicons name="location-outline" size={14} color="#64748B" />
-              <Text style={styles.nextSessionLocation}>PT Clinic - Room 201</Text>
-            </View>
-          </View>
-
-          <TouchableOpacity style={styles.fullScheduleBtn}>
-            <Text style={styles.fullScheduleBtnText}>View Full Schedule</Text>
-          </TouchableOpacity>
-        </View>
-
-        {/* Progress Metrics */}
-        <Text style={styles.sectionTitle}>Progress Metrics</Text>
-        <View style={styles.metricsRow}>
-          <View style={styles.metricCard}>
-            <Text style={styles.metricTitle}>Pain Level</Text>
-            <Text style={styles.metricValue}>3/10</Text>
-            <Text style={styles.metricBaseline}>Baseline: 8/10</Text>
-          </View>
-          <View style={styles.metricCard}>
-            <Text style={styles.metricTitle}>Flexibility</Text>
-            <Text style={styles.metricValue}>75%</Text>
-            <Text style={styles.metricBaseline}>Baseline: 40%</Text>
-          </View>
-          <View style={styles.metricCard}>
-            <Text style={styles.metricTitle}>Strength</Text>
-            <Text style={styles.metricValue}>60%</Text>
-            <Text style={styles.metricBaseline}>Baseline: 30%</Text>
-          </View>
-        </View>
-
-        {/* Today's Home Exercises */}
-        <View style={[styles.rowSpaceBetween, { marginTop: 4, alignItems: 'flex-end', marginBottom: 12 }]}>
-          <Text style={[styles.sectionTitle, { marginBottom: 0 }]}>Today's Home Exercises</Text>
-          <Text style={styles.completedCount}>{completedCount} / {exercises.length} completed</Text>
-        </View>
-
-        {exercises.map(ex => (
-          <View key={ex.id} style={styles.exerciseCard}>
-            <View style={styles.rowSpaceBetween}>
-              <View style={{ flex: 1 }}>
-                <Text style={[styles.exName, ex.completed && styles.exNameCompleted]}>{ex.name}</Text>
-                <Text style={styles.exDesc}>{ex.desc}</Text>
-              </View>
-              {ex.completed && <Ionicons name="checkmark-circle" size={24} color="#10B981" />}
-            </View>
-            {!ex.completed && (
-              <View style={styles.exActionRow}>
-                <TouchableOpacity style={styles.exOutlineBtn}>
-                  <Ionicons name="play-circle-outline" size={16} color="#089FB4" style={{ marginRight: 4 }} />
-                  <Text style={styles.exOutlineBtnText}>Watch Video</Text>
-                </TouchableOpacity>
-                <TouchableOpacity style={styles.exBlueBtn} onPress={() => {}}>
-                  <Ionicons name="checkmark" size={16} color="#FFFFFF" style={{ marginRight: 4 }} />
-                  <Text style={styles.exBlueBtnText}>Mark Complete</Text>
-                </TouchableOpacity>
-              </View>
-            )}
-          </View>
-        ))}
-
-        {/* Upcoming Sessions */}
-        <Text style={[styles.sectionTitle, { marginTop: 12 }]}>Upcoming Sessions</Text>
-        {upcomingSessions.map(sess => (
-          <View key={sess.id} style={styles.card}>
-            <View style={styles.rowSpaceBetween}>
-              <Text style={styles.sessType}>{sess.type}</Text>
-              <View style={styles.badgeScheduled}><Text style={styles.badgeScheduledText}>{sess.status}</Text></View>
-            </View>
-            <Text style={styles.sessFocus}>Focus: {sess.focus}</Text>
-            
-            <View style={styles.sessDetails}>
-              <View style={styles.sessDetailRow}>
-                <Ionicons name="calendar-outline" size={14} color="#64748B" />
-                <Text style={styles.sessDetailText}>{sess.date}</Text>
-              </View>
-              <View style={styles.sessDetailRow}>
-                <Ionicons name="time-outline" size={14} color="#64748B" />
-                <Text style={styles.sessDetailText}>{sess.time}</Text>
-              </View>
+        {isMockUser ? (
+          <>
+            {/* Active Program Box */}
+            <View style={styles.card}>
               <View style={styles.rowSpaceBetween}>
-                <View style={styles.sessDetailRow}>
-                  <Ionicons name="location-outline" size={14} color="#64748B" />
-                  <Text style={styles.sessDetailText}>{sess.location}</Text>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.programTitle}>Knee Rehabilitation</Text>
+                  <Text style={styles.programTherapist}>Dr. Emily Rodriguez, PT, DPT</Text>
+                </View>
+                <View style={styles.badgeActive}><Text style={styles.badgeActiveText}>Active</Text></View>
+              </View>
+              
+              <View style={{ marginTop: 16 }}>
+                <Text style={styles.progressLabel}>Progress <Text style={{fontWeight: '700', color: '#0F172A'}}>3 / 12 sessions</Text></Text>
+                <View style={styles.progressBar}>
+                  <View style={[styles.progressFill, { width: '25%' }]} />
                 </View>
               </View>
+
+              <View style={styles.nextSessionBox}>
+                <Text style={styles.nextSessionLabel}>Next Session</Text>
+                <Text style={styles.nextSessionValue}>April 2, 2026 • 3:00 PM</Text>
+                <View style={styles.nextSessionRow}>
+                  <Ionicons name="location-outline" size={14} color="#64748B" />
+                  <Text style={styles.nextSessionLocation}>PT Clinic - Room 201</Text>
+                </View>
+              </View>
+
+              <TouchableOpacity style={styles.fullScheduleBtn}>
+                <Text style={styles.fullScheduleBtnText}>View Full Schedule</Text>
+              </TouchableOpacity>
             </View>
 
-            <View style={styles.exActionRow}>
-              <TouchableOpacity style={styles.sessOutlineBtn}>
-                <Text style={styles.sessOutlineBtnText}>Reschedule</Text>
-              </TouchableOpacity>
-              <TouchableOpacity style={styles.sessOutlineBtn}>
-                <Text style={styles.sessOutlineBtnText}>Directions</Text>
-              </TouchableOpacity>
+            {/* Progress Metrics */}
+            <Text style={styles.sectionTitle}>Progress Metrics</Text>
+            <View style={styles.metricsRow}>
+              <View style={styles.metricCard}>
+                <Text style={styles.metricTitle}>Pain Level</Text>
+                <Text style={styles.metricValue}>3/10</Text>
+                <Text style={styles.metricBaseline}>Baseline: 8/10</Text>
+              </View>
+              <View style={styles.metricCard}>
+                <Text style={styles.metricTitle}>Flexibility</Text>
+                <Text style={styles.metricValue}>75%</Text>
+                <Text style={styles.metricBaseline}>Baseline: 40%</Text>
+              </View>
+              <View style={styles.metricCard}>
+                <Text style={styles.metricTitle}>Strength</Text>
+                <Text style={styles.metricValue}>60%</Text>
+                <Text style={styles.metricBaseline}>Baseline: 30%</Text>
+              </View>
             </View>
-          </View>
-        ))}
 
-        {/* Achievement Box */}
-        <View style={styles.achievementBox}>
-          <View style={styles.achievementIconBg}>
-            <Ionicons name="trophy" size={24} color="#059669" />
+            {/* Today's Home Exercises */}
+            <View style={[styles.rowSpaceBetween, { marginTop: 4, alignItems: 'flex-end', marginBottom: 12 }]}>
+              <Text style={[styles.sectionTitle, { marginBottom: 0 }]}>Today's Home Exercises</Text>
+              <Text style={styles.completedCount}>{completedCount} / {exercises.length} completed</Text>
+            </View>
+
+            {exercises.map(ex => (
+              <View key={ex.id} style={styles.exerciseCard}>
+                <View style={styles.rowSpaceBetween}>
+                  <View style={{ flex: 1 }}>
+                    <Text style={[styles.exName, ex.completed && styles.exNameCompleted]}>{ex.name}</Text>
+                    <Text style={styles.exDesc}>{ex.desc}</Text>
+                  </View>
+                  {ex.completed && <Ionicons name="checkmark-circle" size={24} color="#10B981" />}
+                </View>
+                {!ex.completed && (
+                  <View style={styles.exActionRow}>
+                    <TouchableOpacity style={styles.exOutlineBtn}>
+                      <Ionicons name="play-circle-outline" size={16} color="#089FB4" style={{ marginRight: 4 }} />
+                      <Text style={styles.exOutlineBtnText}>Watch Video</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity style={styles.exBlueBtn} onPress={() => toggleExercise(ex.id)}>
+                      <Ionicons name="checkmark" size={16} color="#FFFFFF" style={{ marginRight: 4 }} />
+                      <Text style={styles.exBlueBtnText}>Mark Complete</Text>
+                    </TouchableOpacity>
+                  </View>
+                )}
+              </View>
+            ))}
+
+            {/* Upcoming Sessions */}
+            <Text style={[styles.sectionTitle, { marginTop: 12 }]}>Upcoming Sessions</Text>
+            {upcomingSessions.map(sess => (
+              <View key={sess.id} style={styles.card}>
+                <View style={styles.rowSpaceBetween}>
+                  <Text style={styles.sessType}>{sess.type}</Text>
+                  <View style={styles.badgeScheduled}><Text style={styles.badgeScheduledText}>{sess.status}</Text></View>
+                </View>
+                <Text style={styles.sessFocus}>Focus: {sess.focus}</Text>
+                
+                <View style={styles.sessDetails}>
+                  <View style={styles.sessDetailRow}>
+                    <Ionicons name="calendar-outline" size={14} color="#64748B" />
+                    <Text style={styles.sessDetailText}>{sess.date}</Text>
+                  </View>
+                  <View style={styles.sessDetailRow}>
+                    <Ionicons name="time-outline" size={14} color="#64748B" />
+                    <Text style={styles.sessDetailText}>{sess.time}</Text>
+                  </View>
+                  <View style={styles.rowSpaceBetween}>
+                    <View style={styles.sessDetailRow}>
+                      <Ionicons name="location-outline" size={14} color="#64748B" />
+                      <Text style={styles.sessDetailText}>{sess.location}</Text>
+                    </View>
+                  </View>
+                </View>
+
+                <View style={styles.exActionRow}>
+                  <TouchableOpacity style={styles.sessOutlineBtn}>
+                    <Text style={styles.sessOutlineBtnText}>Reschedule</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity style={styles.sessOutlineBtn}>
+                    <Text style={styles.sessOutlineBtnText}>Directions</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            ))}
+
+            {/* Achievement Box */}
+            <View style={styles.achievementBox}>
+              <View style={styles.achievementIconBg}>
+                <Ionicons name="trophy" size={24} color="#059669" />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.achievementTitle}>Great Progress!</Text>
+                <Text style={styles.achievementSub}>You've completed 25% of your rehabilitation program. Keep it up!</Text>
+              </View>
+            </View>
+          </>
+        ) : (
+          <View style={[styles.card, { alignItems: 'center', paddingVertical: 32 }]}>
+            <Ionicons name="fitness-outline" size={32} color="#CBD5E1" style={{ marginBottom: 12 }} />
+            <Text style={styles.programTitle}>No Active Programs</Text>
+            <Text style={[styles.programTherapist, { textAlign: 'center', marginTop: 4 }]}>
+              You don't have any active physical therapy programs. Book a session to get started.
+            </Text>
           </View>
-          <View style={{ flex: 1 }}>
-            <Text style={styles.achievementTitle}>Great Progress!</Text>
-            <Text style={styles.achievementSub}>You've completed 25% of your rehabilitation program. Keep it up!</Text>
-          </View>
-        </View>
+        )}
 
       </ScrollView>
     </SafeAreaView>

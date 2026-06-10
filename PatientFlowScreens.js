@@ -18,7 +18,7 @@ import {
   Keyboard,
   TouchableWithoutFeedback,
 } from 'react-native';
-import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
+import { Ionicons, MaterialCommunityIcons, Feather, FontAwesome5 } from '@expo/vector-icons';
 import Svg, { Circle, Rect } from 'react-native-svg';
 import * as ImagePicker from 'expo-image-picker';
 import DateTimePicker from '@react-native-community/datetimepicker';
@@ -177,7 +177,7 @@ function AnimatedBodyPart({ part, isSelected, onPress }) {
 
 export function AppointmentsScreen({ navigation, route }) {
   const [selected, setSelected] = useState('Upcoming');
-  const isMockUser = true; // Enabled for testing with any user account
+  const isMockUser = !currentUser; // Use mock data only if no user is logged in
 
   const [upcomingAppointments, setUpcomingAppointments] = useState(isMockUser ? [
     {
@@ -275,7 +275,7 @@ export function AppointmentsScreen({ navigation, route }) {
     }
   }, [route?.params?.newAppointment, navigation]);
 
-  const pastAppointments = isMockUser ? [
+  const [pastAppointments, setPastAppointments] = useState(isMockUser ? [
     {
       doctor: 'Dr. Sarah Johnson',
       specialty: 'Family Medicine',
@@ -286,7 +286,7 @@ export function AppointmentsScreen({ navigation, route }) {
       color: '#10B981',
       actions: []
     }
-  ] : [];
+  ] : []);
 
   const displayList = selected === 'Upcoming' ? upcomingAppointments : pastAppointments;
 
@@ -370,7 +370,7 @@ export function PrescriptionsScreen({ navigation }) {
   const [renewalMed, setRenewalMed] = useState(null);
   const [preferredPharmacy, setPreferredPharmacy] = useState('');
   const [renewalNotes, setRenewalNotes] = useState('');
-  const isMockUser = true; // Enabled for testing with any user account
+  const isMockUser = !currentUser; // Use mock data only if no user is logged in
 
   const [prescriptions, setPrescriptions] = useState(isMockUser ? [
     {
@@ -746,6 +746,11 @@ export function AuthScreen({ navigation }) {
   const [password, setPassword] = useState('');
 
   const handleLogin = async () => {
+    if (!email.trim() || !password.trim()) {
+      Alert.alert('Validation Error', 'Please enter both your email and password.');
+      return;
+    }
+
     try {
       console.log(`Attempting to login at: ${API_URL}/user/login`);
       const response = await fetch(`${API_URL}/user/login`, {
@@ -854,169 +859,1294 @@ export function AuthScreen({ navigation }) {
   );
 }
 
+const emptyChild = {
+  firstName: "",
+  lastName: "",
+  birthDate: "",
+  gender: "",
+  philHealth: false,
+  philHealthNumber: "",
+};
+
+const emptyFamilyMember = {
+  firstName: "",
+  lastName: "",
+  birthDate: "",
+  gender: "",
+  relationship: "",
+  philHealth: false,
+  philHealthNumber: "",
+};
+
+const initialFormState = {
+  firstName: "",
+  lastName: "",
+  email: "",
+  mobile: "",
+  password: "",
+  confirmPassword: "",
+  birthDate: "",
+  gender: "",
+  philHealth: false,
+  philHealthNumber: "",
+  deliveryAddress: "",
+  emergencyContact: "",
+  familyMemberName: "",
+  familyRelationship: "",
+};
+
 export function CreateProfileScreen({ navigation }) {
-  const [firstName, setFirstName] = useState('');
-  const [lastName, setLastName] = useState('');
-  const [dob, setDob] = useState(null);
-  const [showDobPicker, setShowDobPicker] = useState(false);
-  const [phone, setPhone] = useState('');
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
+  const onNavigateHome = () => navigation.navigate('MainTabs');
+  const onLogin = () => navigation.navigate('Auth');
+
+  const [screen, setScreen] = useState("choose");
+  const [guardianStep, setGuardianStep] = useState(1);
+  const [familyStep, setFamilyStep] = useState(1);
+  const [error, setError] = useState("");
+
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [showGenderDropdown, setShowGenderDropdown] = useState(false);
 
-  const passwordsMatch = password === confirmPassword;
-  const isEmailValid = email === '' || (email.includes('@') && email.includes('.'));
-  const isPhoneValid = phone === '' || phone.replace(/\D/g, '').length === 12;
+  const [children, setChildren] = useState([{ ...emptyChild }]);
+  const [familyMembers, setFamilyMembers] = useState([{ ...emptyFamilyMember }]);
 
-  const canSubmit = firstName.trim() !== '' && lastName.trim() !== '' && dob !== null && 
-    email.includes('@') && email.includes('.') && 
-    phone.replace(/\D/g, '').length === 12 && 
-    password !== '' && passwordsMatch;
+  const [form, setForm] = useState({ ...initialFormState });
 
-  const handleRegister = async () => {
+  const updateForm = (key, value) => {
+    setForm((prev) => ({ ...prev, [key]: value }));
+    setError("");
+  };
+
+  const updateChild = (index, key, value) => {
+    setChildren((prev) =>
+      prev.map((child, i) => (i === index ? { ...child, [key]: value } : child))
+    );
+    setError("");
+  };
+
+  const updateFamilyMember = (index, key, value) => {
+    setFamilyMembers((prev) =>
+      prev.map((member, i) => (i === index ? { ...member, [key]: value } : member))
+    );
+    setError("");
+  };
+
+  const formatDate = (value) => {
+    const digits = value.replace(/[^0-9]/g, "").slice(0, 8);
+    if (digits.length <= 2) return digits;
+    if (digits.length <= 4) return `${digits.slice(0, 2)}/${digits.slice(2)}`;
+    return `${digits.slice(0, 2)}/${digits.slice(2, 4)}/${digits.slice(4)}`;
+  };
+
+  const formatPhilHealth = (value) => {
+    const digits = value.replace(/[^0-9]/g, "").slice(0, 12);
+    if (digits.length <= 2) return digits;
+    if (digits.length <= 11) return `${digits.slice(0, 2)}-${digits.slice(2)}`;
+    return `${digits.slice(0, 2)}-${digits.slice(2, 11)}-${digits.slice(11)}`;
+  };
+
+  const isValidDate = (date) => {
+    if (!/^\d{2}\/\d{2}\/\d{4}$/.test(date)) return false;
+    const [mm, dd, yyyy] = date.split("/").map(Number);
+    if (mm < 1 || mm > 12) return false;
+    if (dd < 1 || dd > 31) return false;
+    if (yyyy < 1900 || yyyy > 2026) return false;
+    return true;
+  };
+
+  const validateEmail = (email) => {
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    const cleanEmail = email.trim();
+    return emailRegex.test(cleanEmail);
+  };
+
+  const validatePhone = (phone) => /^09\d{9}$/.test(phone);
+
+  const getPasswordChecks = (password) => ({
+    length: password.length >= 8,
+    upper: /[A-Z]/.test(password),
+    lower: /[a-z]/.test(password),
+    number: /[0-9]/.test(password),
+    special: /[^A-Za-z0-9]/.test(password),
+  });
+
+  const passwordChecks = getPasswordChecks(form.password);
+  const passwordScore = Object.values(passwordChecks).filter(Boolean).length;
+
+  const passwordStrengthText =
+    passwordScore === 0
+      ? ""
+      : passwordScore <= 2
+      ? "Weak"
+      : passwordScore === 3
+      ? "Fair"
+      : passwordScore === 4
+      ? "Good"
+      : "Strong";
+
+  const passwordStrengthColor =
+    passwordScore <= 2
+      ? "#DC2626"
+      : passwordScore === 3
+      ? "#F59E0B"
+      : passwordScore === 4
+      ? "#2563EB"
+      : "#16A34A";
+
+  const validateMainAccountFields = () => {
+    const missing = [];
+
+    if (form.firstName.trim() === "") missing.push("enter first name");
+    if (form.lastName.trim() === "") missing.push("enter last name");
+
+    if (form.email.trim() === "") missing.push("enter email address");
+    else if (!validateEmail(form.email)) {
+      missing.push("enter a valid email address format");
+    }
+
+    if (form.mobile.trim() === "") missing.push("enter mobile number");
+    else if (!validatePhone(form.mobile)) {
+      missing.push("enter a standard Philippine mobile number starting with 09 and exactly 11 digits");
+    }
+
+    if (form.password.trim() === "") missing.push("enter password");
+    else if (passwordScore < 5) {
+      missing.push("use a stronger password with 8 characters, uppercase, lowercase, number, and special character");
+    }
+
+    if (form.confirmPassword.trim() === "") missing.push("confirm password");
+    else if (form.password !== form.confirmPassword) missing.push("make sure passwords match");
+
+    if (missing.length > 0) {
+      setError(`Please ${missing.join(", ")}.`);
+      return false;
+    }
+
+    setError("");
+    return true;
+  };
+
+  const validateMyself = async () => {
+    if (!validateMainAccountFields()) return;
+
+    const missing = [];
+    if (form.birthDate.trim() === "") missing.push("enter date of birth");
+    else if (!isValidDate(form.birthDate)) missing.push("enter date of birth in mm/dd/yyyy format");
+    if (form.gender.trim() === "") missing.push("select gender");
+
+    if (form.philHealth) {
+      const digits = form.philHealthNumber.replace(/[^0-9]/g, "");
+      if (digits.length !== 12) missing.push("enter a valid 12-digit PhilHealth number");
+    }
+
+    if (missing.length > 0) {
+      setError(`Please ${missing.join(", ")}.`);
+      return;
+    }
+
+    setError("");
+
+    const payload = {
+      firstName: form.firstName,
+      lastName: form.lastName,
+      email: form.email.toLowerCase().trim(),
+      phone: '+63' + form.mobile.substring(1),
+      password: form.password,
+      dob: form.birthDate,
+      gender: form.gender,
+      accountType: 'personal',
+      philHealthNumber: form.philHealth ? form.philHealthNumber : '',
+      address: form.deliveryAddress || 'Not provided',
+      emergencyName: form.emergencyContact || 'Not provided',
+      bloodType: 'Not provided',
+      allergies: 'None',
+      emergencyPhone: 'Not provided',
+      emergencyEmail: 'Not provided',
+      emergencyRelationship: 'Not provided',
+    };
+
     try {
-      console.log(`Attempting to register at: ${API_URL}/user/register`);
-      const response = await fetch(`${API_URL}/user/register`, {
+      const response = await fetch(`${API_URL}/user`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          firstName,
-          lastName,
-          email,
-          password,
-          phone,
-          dob: dob ? dob.toLocaleDateString() : '01/01/1990',
-          gender: 'Other',
-          address: 'Not provided',
-          bloodType: 'Unknown',
-          allergies: 'None',
-          emergencyName: 'Not provided',
-          emergencyPhone: '+63 000-000-0000',
-          emergencyEmail: 'none@example.com',
-          emergencyRelationship: 'Other',
-          profileImage: `https://ui-avatars.com/api/?name=${encodeURIComponent(firstName)}+${encodeURIComponent(lastName)}&background=089FB4&color=fff&size=256`
-        })
+        body: JSON.stringify(payload),
       });
-      
+
       const responseText = await response.text();
       let data = {};
       try {
         data = JSON.parse(responseText);
       } catch (e) {
-        data = { error: `Endpoint missing on backend (Server returned: ${responseText})` };
+        setError(`Server returned an invalid response: ${responseText}`);
+        Alert.alert('Creation Failed', `Server returned an invalid response.`);
+        return;
       }
-      
+
       if (response.ok) {
-        setCurrentUser(data);
-        Alert.alert('Success', 'Profile created successfully!');
-        navigation.navigate('MainTabs');
+        Alert.alert("Success", "Account created successfully! Please log in.", [{ text: "OK", onPress: onLogin }]);
       } else {
-        Alert.alert('Registration Failed', data.error || 'Check your inputs');
+        const errorMessage = data.error || data.message || 'An unknown error occurred during account creation.';
+        setError(errorMessage);
+        Alert.alert('Creation Failed', errorMessage);
       }
     } catch (error) {
-      console.error('Register Connection Error:', error);
-      Alert.alert('Connection Error', `Could not connect to ${API_URL}.\n\nPlease check your IP address in config.js and ensure your Sails server is running.`);
+      console.error('Account Creation Connection Error:', error);
+      const connErrorMsg = `Could not connect to the server. Please check your IP address in config.js and ensure your Sails server is running.`;
+      setError(connErrorMsg);
+      Alert.alert('Connection Error', connErrorMsg);
     }
   };
 
-  return (
-    <Screen title="Create Account" subtitle="Let's get started" icon="person-add-outline" navigation={navigation}>
-      <Card>
-        <View style={styles.inputGroup}><Text style={styles.inputLabel}>First Name *</Text><TextInput style={styles.textInput} placeholder="e.g. Sarah" placeholderTextColor="#94A3B8" value={firstName} onChangeText={setFirstName} /></View>
-        <View style={styles.inputGroup}><Text style={styles.inputLabel}>Last Name *</Text><TextInput style={styles.textInput} placeholder="e.g. Williams" placeholderTextColor="#94A3B8" value={lastName} onChangeText={setLastName} /></View>
-        
-        <View style={styles.inputGroup}>
-          <Text style={styles.inputLabel}>Date of Birth *</Text>
-          <TouchableOpacity style={[styles.textInput, { justifyContent: 'center' }]} onPress={() => setShowDobPicker(true)}>
-            <Text style={{ color: dob ? ink : '#94A3B8' }}>{dob ? dob.toLocaleDateString() : 'Select your birthday'}</Text>
-          </TouchableOpacity>
-          
-          {showDobPicker && (
-            Platform.OS === 'ios' ? (
-              <Modal transparent={true} animationType="fade" visible={showDobPicker} onRequestClose={() => setShowDobPicker(false)}>
-                <View style={{ flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.4)' }}>
-                  <TouchableWithoutFeedback onPress={() => setShowDobPicker(false)}>
-                    <View style={{ flex: 1 }} />
-                  </TouchableWithoutFeedback>
-                  <View style={{ backgroundColor: '#FFFFFF', paddingBottom: 30, borderTopLeftRadius: 16, borderTopRightRadius: 16 }}>
-                    <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 16, borderBottomWidth: 1, borderBottomColor: '#F1F5F9' }}>
-                      <Text style={{ color: ink, fontSize: 16, fontWeight: '700' }}>Select Birthday</Text>
-                      <TouchableOpacity onPress={() => setShowDobPicker(false)}>
-                        <Text style={{ color: cyan, fontSize: 16, fontWeight: '800' }}>Done</Text>
-                      </TouchableOpacity>
-                    </View>
-                    <View style={{ alignItems: 'center', width: '100%' }}>
-                      <DateTimePicker 
-                        value={dob || new Date(1990, 0, 1)} 
-                        mode="date" 
-                        display="spinner" 
-                        maximumDate={new Date()}
-                        textColor="#000000"
-                        style={{ height: 200, width: 320, backgroundColor: '#FFFFFF' }}
-                        onChange={(e, d) => {
-                          if (d) setDob(d);
-                        }} 
-                      />
-                    </View>
-                  </View>
-                </View>
-              </Modal>
-            ) : (
-              <DateTimePicker 
-                value={dob || new Date(1990, 0, 1)} 
-                mode="date" 
-                display="spinner" 
-                maximumDate={new Date()}
-                onChange={(event, selectedDate) => {
-                  setShowDobPicker(false);
-                  if (event.type === 'set' && selectedDate) {
-                    setDob(selectedDate);
-                  }
-                }} 
+  const validateGuardianStep1 = () => {
+    if (!validateMainAccountFields()) return;
+
+    const missing = [];
+    if (form.birthDate.trim() === "") missing.push("enter your date of birth");
+    else if (!isValidDate(form.birthDate)) missing.push("enter your date of birth in mm/dd/yyyy format");
+    if (form.gender.trim() === "") missing.push("select your gender");
+
+    if (missing.length > 0) {
+      setError(`Please ${missing.join(", ")}.`);
+      return;
+    }
+
+    setError("");
+    setGuardianStep(2);
+  };
+
+  const validateGuardianStep2 = async () => {
+    const missing = [];
+
+    children.forEach((child, index) => {
+      const childLabel = `Child ${index + 1}`;
+      if (child.firstName.trim() === "") missing.push(`enter ${childLabel} first name`);
+      if (child.lastName.trim() === "") missing.push(`enter ${childLabel} last name`);
+      if (child.birthDate.trim() === "") missing.push(`enter ${childLabel} date of birth`);
+      else if (!isValidDate(child.birthDate)) missing.push(`enter ${childLabel} date of birth in mm/dd/yyyy format`);
+      if (child.gender.trim() === "") missing.push(`select ${childLabel} gender`);
+
+      if (child.philHealth) {
+        const digits = child.philHealthNumber.replace(/[^0-9]/g, "");
+        if (digits.length !== 12) missing.push(`enter a valid 12-digit PhilHealth number for ${childLabel}`);
+      }
+    });
+
+    if (missing.length > 0) {
+      setError(`Please ${missing.join(", ")}.`);
+      return;
+    }
+
+    setError("");
+
+    const payload = {
+      // Guardian info
+      firstName: form.firstName,
+      lastName: form.lastName,
+      email: form.email.toLowerCase().trim(),
+      phone: '+63' + form.mobile.substring(1),
+      password: form.password,
+      dob: form.birthDate,
+      gender: form.gender,
+      accountType: 'guardian',
+      address: 'Not provided',
+      emergencyName: 'Not provided',
+      bloodType: 'Not provided',
+      allergies: 'None',
+      emergencyPhone: 'Not provided',
+      emergencyEmail: 'Not provided',
+      emergencyRelationship: 'Not provided',
+      // Children info
+      dependents: children.map(child => ({
+        firstName: child.firstName,
+        lastName: child.lastName,
+        dob: child.birthDate,
+        gender: child.gender,
+        relationship: 'Child',
+        philHealthNumber: child.philHealth ? child.philHealthNumber : '',
+      }))
+    };
+
+    try {
+      const response = await fetch(`${API_URL}/user`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+
+      const responseText = await response.text();
+      let data = {};
+      try {
+        data = JSON.parse(responseText);
+      } catch (e) {
+        setError(`Server returned an invalid response: ${responseText}`);
+        Alert.alert('Creation Failed', `Server returned an invalid response.`);
+        return;
+      }
+
+      if (response.ok) {
+        Alert.alert("Success", "Account created successfully! Please log in.", [{ text: "OK", onPress: onLogin }]);
+      } else {
+        const errorMessage = data.error || data.message || 'An unknown error occurred during account creation.';
+        setError(errorMessage);
+        Alert.alert('Creation Failed', errorMessage);
+      }
+    } catch (error) {
+      console.error('Account Creation Connection Error:', error);
+      const connErrorMsg = `Could not connect to the server. Please check your IP address in config.js and ensure your Sails server is running.`;
+      setError(connErrorMsg);
+      Alert.alert('Connection Error', connErrorMsg);
+    }
+  };
+
+  const validateFamilyStep1 = () => {
+    if (!validateMainAccountFields()) return;
+
+    const missing = [];
+    if (form.birthDate.trim() === "") missing.push("enter your date of birth");
+    else if (!isValidDate(form.birthDate)) missing.push("enter your date of birth in mm/dd/yyyy format");
+    if (form.gender.trim() === "") missing.push("select your gender");
+
+    if (missing.length > 0) {
+      setError(`Please ${missing.join(", ")}.`);
+      return;
+    }
+
+    setError("");
+    setFamilyStep(2);
+  };
+
+  const validateFamilyStep2 = async () => {
+    const missing = [];
+
+    familyMembers.forEach((member, index) => {
+      const label = `Family Member ${index + 1}`;
+
+      if (member.firstName.trim() === "") missing.push(`enter ${label} first name`);
+      if (member.lastName.trim() === "") missing.push(`enter ${label} last name`);
+      if (member.birthDate.trim() === "") missing.push(`enter ${label} date of birth`);
+      else if (!isValidDate(member.birthDate)) missing.push(`enter ${label} date of birth in mm/dd/yyyy format`);
+      if (member.gender.trim() === "") missing.push(`select ${label} gender`);
+      if (member.relationship.trim() === "") missing.push(`select ${label} relationship`);
+
+      if (member.philHealth) {
+        const digits = member.philHealthNumber.replace(/[^0-9]/g, "");
+        if (digits.length !== 12) missing.push(`enter a valid 12-digit PhilHealth number for ${label}`);
+      }
+    });
+
+    if (missing.length > 0) {
+      setError(`Please ${missing.join(", ")}.`);
+      return;
+    }
+
+    setError("");
+
+    const payload = {
+      // Primary account holder info
+      firstName: form.firstName,
+      lastName: form.lastName,
+      email: form.email.toLowerCase().trim(),
+      phone: '+63' + form.mobile.substring(1),
+      password: form.password,
+      dob: form.birthDate,
+      gender: form.gender,
+      accountType: 'family',
+      address: 'Not provided',
+      emergencyName: 'Not provided',
+      bloodType: 'Not provided',
+      allergies: 'None',
+      emergencyPhone: 'Not provided',
+      emergencyEmail: 'Not provided',
+      emergencyRelationship: 'Not provided',
+      // Family members info
+      dependents: familyMembers.map(member => ({
+        firstName: member.firstName,
+        lastName: member.lastName,
+        dob: member.birthDate,
+        gender: member.gender,
+        relationship: member.relationship,
+        philHealthNumber: member.philHealth ? member.philHealthNumber : '',
+      }))
+    };
+
+    try {
+      const response = await fetch(`${API_URL}/user`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+
+      const responseText = await response.text();
+      let data = {};
+      try {
+        data = JSON.parse(responseText);
+      } catch (e) {
+        setError(`Server returned an invalid response: ${responseText}`);
+        Alert.alert('Creation Failed', `Server returned an invalid response.`);
+        return;
+      }
+
+      if (response.ok) {
+        Alert.alert("Success", "Account created successfully! Please log in.", [{ text: "OK", onPress: onLogin }]);
+      } else {
+        const errorMessage = data.error || data.message || 'An unknown error occurred during account creation.';
+        setError(errorMessage);
+        Alert.alert('Creation Failed', errorMessage);
+      }
+    } catch (error) {
+      console.error('Account Creation Connection Error:', error);
+      const connErrorMsg = `Could not connect to the server. Please check your IP address in config.js and ensure your Sails server is running.`;
+      setError(connErrorMsg);
+      Alert.alert('Connection Error', connErrorMsg);
+    }
+  };
+
+
+  const goBackToChoice = () => {
+    setError("");
+    setScreen("choose");
+    setGuardianStep(1);
+    setFamilyStep(1);
+    setForm({ ...initialFormState });
+    setChildren([{ ...emptyChild }]);
+    setFamilyMembers([{ ...emptyFamilyMember }]);
+  };
+
+  if (screen === "myself") {
+    return (
+      <SafeAreaView style={styles.reg_mainContainer}>
+        <TopBar titleAction="Back" onAction={goBackToChoice} color="#2563EB" />
+
+        <ScrollView showsVerticalScrollIndicator={false}>
+          <View style={styles.reg_formHeader}>
+            <Text style={styles.reg_formHeaderTitle}>Create Your Account</Text>
+            <Text style={styles.reg_formHeaderSubtitle}>Join OkieDoc+ and access quality healthcare from home</Text>
+          </View>
+
+          <View style={styles.reg_formCard}>
+            <Text style={styles.reg_formTitle}>Personal Information</Text>
+
+            <AccountFields
+              form={form}
+              updateForm={updateForm}
+              showPassword={showPassword}
+              setShowPassword={setShowPassword}
+              showConfirmPassword={showConfirmPassword}
+              setShowConfirmPassword={setShowConfirmPassword}
+              passwordChecks={passwordChecks}
+              passwordScore={passwordScore}
+              passwordStrengthText={passwordStrengthText}
+              passwordStrengthColor={passwordStrengthColor}
+            />
+
+            <View style={styles.reg_divider} />
+
+            <Text style={styles.reg_inputLabel}>Date of Birth <Text style={styles.reg_required}>*</Text></Text>
+            <View style={styles.reg_inputBox}>
+              <TextInput
+                style={styles.reg_input}
+                placeholder="mm/dd/yyyy"
+                placeholderTextColor="#64748B"
+                keyboardType="number-pad"
+                maxLength={10}
+                value={form.birthDate}
+                onChangeText={(text) => updateForm("birthDate", formatDate(text))}
               />
-            )
+              <Feather name="calendar" size={16} color="#CBD5E1" />
+            </View>
+
+            <Text style={styles.reg_inputLabel}>Gender <Text style={styles.reg_required}>*</Text></Text>
+            <Dropdown
+              value={form.gender}
+              placeholder="Select gender"
+              open={showGenderDropdown}
+              setOpen={setShowGenderDropdown}
+              options={["Male", "Female", "Prefer not to say"]}
+              onSelect={(item) => updateForm("gender", item)}
+            />
+
+            <View style={styles.reg_divider} />
+
+            <PhilHealthBox
+              checked={form.philHealth}
+              onPress={() => updateForm("philHealth", !form.philHealth)}
+              value={form.philHealthNumber}
+              onChangeText={(text) => updateForm("philHealthNumber", formatPhilHealth(text))}
+            />
+
+            <OptionalField
+              label="+ Add Delivery Address (Optional)"
+              value={form.deliveryAddress}
+              placeholder="Enter delivery address"
+              onChangeText={(text) => updateForm("deliveryAddress", text)}
+            />
+
+            <OptionalField
+              label="+ Add Emergency Contact (Optional)"
+              value={form.emergencyContact}
+              placeholder="Enter emergency contact"
+              onChangeText={(text) => updateForm("emergencyContact", text)}
+            />
+
+            {error !== "" && <Text style={styles.reg_errorText}>{error}</Text>}
+
+            <TouchableOpacity style={styles.reg_primaryButton} onPress={validateMyself}>
+              <Text style={styles.reg_primaryButtonText}>Create Account</Text>
+            </TouchableOpacity>
+
+            <LoginRow onLogin={onLogin} />
+          </View>
+
+          <SecureText />
+        </ScrollView>
+      </SafeAreaView>
+    );
+  }
+
+  if (screen === "child") {
+    return (
+      <SafeAreaView style={[styles.reg_mainContainer, { backgroundColor: "#F8FFFB" }]}>
+        <TopBar titleAction="Back" onAction={goBackToChoice} color="#2563EB" />
+
+        <ScrollView showsVerticalScrollIndicator={false}>
+          <RegistrationHero
+            icon="heart"
+            color="#16A34A"
+            bgColor="#DCFCE7"
+            title="Guardian Registration"
+            subtitle="Register as a guardian for your child below 18 years old"
+            currentStep={guardianStep}
+            activeColor="#16A34A"
+          />
+
+          {guardianStep === 1 && (
+            <View style={styles.reg_formCard}>
+              <Text style={styles.reg_formTitle}>Guardian Information</Text>
+
+              <AccountFields
+                form={form}
+                updateForm={updateForm}
+                showPassword={showPassword}
+                setShowPassword={setShowPassword}
+                showConfirmPassword={showConfirmPassword}
+                setShowConfirmPassword={setShowConfirmPassword}
+                passwordChecks={passwordChecks}
+                passwordScore={passwordScore}
+                passwordStrengthText={passwordStrengthText}
+                passwordStrengthColor={passwordStrengthColor}
+              />
+
+              <View style={styles.reg_divider} />
+
+              <Text style={styles.reg_inputLabel}>Date of Birth <Text style={styles.reg_required}>*</Text></Text>
+              <View style={styles.reg_inputBox}>
+                <TextInput
+                  style={styles.reg_input}
+                  placeholder="mm/dd/yyyy"
+                  placeholderTextColor="#64748B"
+                  keyboardType="number-pad"
+                  maxLength={10}
+                  value={form.birthDate}
+                  onChangeText={(text) => updateForm("birthDate", formatDate(text))}
+                />
+                <Feather name="calendar" size={16} color="#CBD5E1" />
+              </View>
+
+              <Text style={styles.reg_inputLabel}>Gender <Text style={styles.reg_required}>*</Text></Text>
+              <Dropdown
+                value={form.gender}
+                placeholder="Select gender"
+                open={showGenderDropdown}
+                setOpen={setShowGenderDropdown}
+                options={["Male", "Female", "Prefer not to say"]}
+                onSelect={(item) => updateForm("gender", item)}
+              />
+
+              {error !== "" && <Text style={styles.reg_errorText}>{error}</Text>}
+
+              <TouchableOpacity style={[styles.reg_primaryButton, { backgroundColor: "#16A34A" }]} onPress={validateGuardianStep1}>
+                <Text style={styles.reg_primaryButtonText}>Continue to Child Details</Text>
+              </TouchableOpacity>
+            </View>
+          )}
+
+          {guardianStep === 2 && (
+            <View style={styles.reg_formCard}>
+              <Text style={styles.reg_formTitle}>Child Information</Text>
+
+              <View style={styles.reg_childInfoNotice}>
+                <Text style={styles.reg_childInfoNoticeText}>
+                  This account will be managed by the parent/guardian. You can add multiple children to this account.
+                </Text>
+              </View>
+
+              {children.map((child, index) => (
+                <ChildCard
+                  key={index}
+                  child={child}
+                  index={index}
+                  canRemove={children.length > 1}
+                  onRemove={() => {
+                    setChildren((prev) => prev.filter((_, i) => i !== index));
+                    setError("");
+                  }}
+                  updateChild={updateChild}
+                  formatDate={formatDate}
+                  formatPhilHealth={formatPhilHealth}
+                />
+              ))}
+
+              <TouchableOpacity
+                style={styles.reg_addChildButton}
+                onPress={() => {
+                  setChildren((prev) => [...prev, { ...emptyChild }]);
+                  setError("");
+                }}
+              >
+                <Feather name="plus" size={16} color="#16A34A" />
+                <Text style={styles.reg_addChildText}>Add Another Child</Text>
+              </TouchableOpacity>
+
+              {error !== "" && <Text style={styles.reg_errorText}>{error}</Text>}
+
+              <View style={styles.reg_twoButtons}>
+                <TouchableOpacity style={styles.reg_secondaryButton} onPress={() => setGuardianStep(1)}>
+                  <Text style={styles.reg_secondaryButtonText}>Back</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity style={[styles.reg_primaryButton, styles.reg_flexButton, { backgroundColor: "#16A34A" }]} onPress={validateGuardianStep2}>
+                  <Text style={styles.reg_primaryButtonText}>Create Account</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          )}
+
+          <SecureText />
+        </ScrollView>
+      </SafeAreaView>
+    );
+  }
+
+  if (screen === "family") {
+    return (
+      <SafeAreaView style={[styles.reg_mainContainer, { backgroundColor: "#FCF7FF" }]}>
+        <TopBar titleAction="Back" onAction={goBackToChoice} color="#2563EB" />
+
+        <ScrollView showsVerticalScrollIndicator={false}>
+          <RegistrationHero
+            icon="users"
+            color="#9333EA"
+            bgColor="#F3E8FF"
+            title="Family Account Registration"
+            subtitle="Manage healthcare for your entire family in one account"
+            currentStep={familyStep}
+            activeColor="#9333EA"
+          />
+
+          {familyStep === 1 && (
+            <View style={styles.reg_formCard}>
+              <Text style={styles.reg_formTitle}>Primary Account Holder</Text>
+
+              <AccountFields
+                form={form}
+                updateForm={updateForm}
+                showPassword={showPassword}
+                setShowPassword={setShowPassword}
+                showConfirmPassword={showConfirmPassword}
+                setShowConfirmPassword={setShowConfirmPassword}
+                passwordChecks={passwordChecks}
+                passwordScore={passwordScore}
+                passwordStrengthText={passwordStrengthText}
+                passwordStrengthColor={passwordStrengthColor}
+              />
+
+              <View style={styles.reg_divider} />
+
+              <Text style={styles.reg_inputLabel}>Date of Birth <Text style={styles.reg_required}>*</Text></Text>
+              <View style={styles.reg_inputBox}>
+                <TextInput
+                  style={styles.reg_input}
+                  placeholder="mm/dd/yyyy"
+                  placeholderTextColor="#64748B"
+                  keyboardType="number-pad"
+                  maxLength={10}
+                  value={form.birthDate}
+                  onChangeText={(text) => updateForm("birthDate", formatDate(text))}
+                />
+                <Feather name="calendar" size={16} color="#CBD5E1" />
+              </View>
+
+              <Text style={styles.reg_inputLabel}>Gender <Text style={styles.reg_required}>*</Text></Text>
+              <Dropdown
+                value={form.gender}
+                placeholder="Select gender"
+                open={showGenderDropdown}
+                setOpen={setShowGenderDropdown}
+                options={["Male", "Female", "Prefer not to say"]}
+                onSelect={(item) => updateForm("gender", item)}
+              />
+
+              {error !== "" && <Text style={styles.reg_errorText}>{error}</Text>}
+
+              <TouchableOpacity style={[styles.reg_primaryButton, { backgroundColor: "#9333EA" }]} onPress={validateFamilyStep1}>
+                <Text style={styles.reg_primaryButtonText}>Continue to Add Family Members</Text>
+              </TouchableOpacity>
+            </View>
+          )}
+
+          {familyStep === 2 && (
+            <View style={styles.reg_formCard}>
+              <Text style={styles.reg_formTitle}>Family Members</Text>
+
+              <View style={styles.reg_familyInfoNotice}>
+                <Text style={styles.reg_childInfoNoticeText}>
+                  Add family members who will share this account. You can easily switch between profiles during consultations.
+                </Text>
+              </View>
+
+              {familyMembers.map((member, index) => (
+                <FamilyMemberCard
+                  key={index}
+                  member={member}
+                  index={index}
+                  canRemove={familyMembers.length > 1}
+                  onRemove={() => {
+                    setFamilyMembers((prev) => prev.filter((_, i) => i !== index));
+                    setError("");
+                  }}
+                  updateFamilyMember={updateFamilyMember}
+                  formatDate={formatDate}
+                  formatPhilHealth={formatPhilHealth}
+                />
+              ))}
+
+              <TouchableOpacity
+                style={styles.reg_addFamilyButton}
+                onPress={() => {
+                  setFamilyMembers((prev) => [...prev, { ...emptyFamilyMember }]);
+                  setError("");
+                }}
+              >
+                <Feather name="plus" size={16} color="#9333EA" />
+                <Text style={styles.reg_addFamilyText}>Add Family Member</Text>
+              </TouchableOpacity>
+
+              {error !== "" && <Text style={styles.reg_errorText}>{error}</Text>}
+
+              <View style={styles.reg_twoButtons}>
+                <TouchableOpacity style={styles.reg_secondaryButton} onPress={() => setFamilyStep(1)}>
+                  <Text style={styles.reg_secondaryButtonText}>Back</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity style={[styles.reg_primaryButton, styles.reg_flexButton, { backgroundColor: "#9333EA" }]} onPress={validateFamilyStep2}>
+                  <Text style={styles.reg_primaryButtonText}>Create Account</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          )}
+
+          <SecureText />
+        </ScrollView>
+      </SafeAreaView>
+    );
+  }
+
+  return (
+    <SafeAreaView style={styles.reg_mainContainer}>
+      <TopBar titleAction="Back" onAction={onLogin} color="#2563EB" />
+
+      <ScrollView showsVerticalScrollIndicator={false}>
+        <View style={styles.reg_headerSection}>
+          <Text style={styles.reg_title}>Who is this account for?</Text>
+          <Text style={styles.reg_subtitle}>Choose the option that best describes your situation</Text>
+        </View>
+
+        <AccountTypeCard icon="user" color="#2563EB" title="Myself (18+)" subtitle="Create a personal account for yourself" onPress={() => setScreen("myself")} />
+        <AccountTypeCard icon="heart" color="#16A34A" title="My Child (Below 18)" subtitle="Register as a guardian for your child" onPress={() => setScreen("child")} />
+        <AccountTypeCard icon="users" color="#9333EA" title="A Family Member" subtitle="Manage multiple family members in one account" onPress={() => setScreen("family")} />
+
+        <View style={styles.reg_infoCard}>
+          <View style={styles.reg_infoIcon}>
+            <FontAwesome5 name="stethoscope" size={16} color="#fff" solid />
+          </View>
+
+          <View style={{ flex: 1 }}>
+            <Text style={styles.reg_infoTitle}>Why we ask this?</Text>
+            <Text style={styles.reg_infoText}>
+              We need to ensure proper consent and guardianship for patients below 18 years old. For family accounts, you can manage multiple members and easily switch between profiles during consultations.
+            </Text>
+          </View>
+        </View>
+
+        <LoginRow onLogin={onLogin} />
+      </ScrollView>
+    </SafeAreaView>
+  );
+}
+
+function TopBar({ titleAction, onAction, color }) {
+  return (
+    <View style={styles.reg_topBar}>
+      <View style={styles.reg_logoContainer}>
+        <View style={[styles.reg_logoIcon, { backgroundColor: color || "#2563EB" }]}>
+          <FontAwesome5 name="stethoscope" size={16} color="#fff" solid />
+        </View>
+        <Text style={styles.reg_logoText}>OkieDoc<Text style={styles.reg_logoPlus}>+</Text></Text>
+      </View>
+
+      <TouchableOpacity onPress={onAction}>
+        <Text style={styles.reg_backHomeTopText}>{titleAction}</Text>
+      </TouchableOpacity>
+    </View>
+  );
+}
+
+function AccountTypeCard({ icon, color, title, subtitle, onPress }) {
+  return (
+    <TouchableOpacity style={styles.reg_optionCard} onPress={onPress} activeOpacity={0.85}>
+      <View style={[styles.reg_optionIconBox, { backgroundColor: color }]}>
+        <Feather name={icon} size={34} color="#fff" />
+      </View>
+      <Text style={styles.reg_optionTitle}>{title}</Text>
+      <Text style={styles.reg_optionSubtitle}>{subtitle}</Text>
+      <Text style={styles.reg_continueText}>Continue</Text>
+    </TouchableOpacity>
+  );
+}
+
+function RegistrationHero({ icon, color, bgColor, title, subtitle, currentStep, activeColor }) {
+  return (
+    <View style={styles.reg_registrationHero}>
+      <View style={[styles.reg_heroIconBox, { backgroundColor: bgColor }]}>
+        <Feather name={icon} size={32} color={color} />
+      </View>
+
+      <Text style={styles.reg_registrationTitle}>{title}</Text>
+      <Text style={styles.reg_registrationSubtitle}>{subtitle}</Text>
+
+      <View style={styles.reg_stepRow}>
+        <View style={[styles.reg_stepCircle, { backgroundColor: activeColor }]}>
+          {currentStep === 2 ? (
+            <Feather name="check-circle" size={20} color="#fff" />
+          ) : (
+            <Text style={styles.reg_stepCircleText}>1</Text>
           )}
         </View>
-        
-        <View style={styles.inputGroup}>
-          <Text style={styles.inputLabel}>Phone Number *</Text>
-          <TextInput style={[styles.textInput, !isPhoneValid && phone.length > 0 && { borderColor: '#EF4444' }]} placeholder="+63 XXX-XXX-XXXX" placeholderTextColor="#94A3B8" keyboardType="phone-pad" value={phone} onChangeText={(t) => setPhone(formatPhoneNumber(t))} maxLength={16} />
-          {(!isPhoneValid && phone.length > 0) && <Text style={{ color: '#EF4444', fontSize: 12, marginTop: 4 }}>Phone number must be complete.</Text>}
+        <View style={[styles.reg_stepLine, currentStep === 2 && { backgroundColor: activeColor }]} />
+        <View style={[styles.reg_stepCircle, currentStep === 2 ? { backgroundColor: activeColor } : { backgroundColor: "#E5E7EB" }]}>
+          <Text style={[styles.reg_stepCircleText, currentStep !== 2 && { color: "#475569" }]}>2</Text>
         </View>
-        <View style={styles.inputGroup}>
-          <Text style={styles.inputLabel}>Email Address *</Text>
-          <TextInput style={[styles.textInput, !isEmailValid && email.length > 0 && { borderColor: '#EF4444' }]} placeholder="e.g. sarah@example.com" placeholderTextColor="#94A3B8" autoCapitalize="none" keyboardType="email-address" value={email} onChangeText={setEmail} />
-          {(!isEmailValid && email.length > 0) && <Text style={{ color: '#EF4444', fontSize: 12, marginTop: 4 }}>Please enter a valid email address.</Text>}
-        </View>
-        
-        <View style={styles.inputGroup}>
-          <Text style={styles.inputLabel}>Password *</Text>
-          <View style={{ justifyContent: 'center' }}>
-            <TextInput style={[styles.textInput, { paddingRight: 40 }]} placeholder="Create a password" placeholderTextColor="#94A3B8" secureTextEntry={!showPassword} value={password} onChangeText={setPassword} />
-            <TouchableOpacity onPress={() => setShowPassword(!showPassword)} style={{ position: 'absolute', right: 14 }}>
-              <Ionicons name={showPassword ? "eye-off-outline" : "eye-outline"} size={20} color={muted} />
-            </TouchableOpacity>
+      </View>
+    </View>
+  );
+}
+
+function AccountFields({
+  form,
+  updateForm,
+  showPassword,
+  setShowPassword,
+  showConfirmPassword,
+  setShowConfirmPassword,
+  passwordChecks,
+  passwordScore,
+  passwordStrengthText,
+  passwordStrengthColor,
+}) {
+  const confirmStatus =
+    form.confirmPassword === ""
+      ? ""
+      : form.password === form.confirmPassword
+      ? "Passwords match"
+      : "Passwords do not match";
+
+  return (
+    <>
+      <Text style={styles.reg_inputLabel}>First Name <Text style={styles.reg_required}>*</Text></Text>
+      <InputBox placeholder="Juan" value={form.firstName} onChangeText={(text) => updateForm("firstName", text)} />
+
+      <Text style={styles.reg_inputLabel}>Last Name <Text style={styles.reg_required}>*</Text></Text>
+      <InputBox placeholder="Dela Cruz" value={form.lastName} onChangeText={(text) => updateForm("lastName", text)} />
+
+      <View style={styles.reg_divider} />
+
+      <Text style={styles.reg_inputLabel}>Email Address <Text style={styles.reg_required}>*</Text></Text>
+      <InputBox
+        placeholder="juan.delacruz@gmail.com"
+        value={form.email}
+        keyboardType="email-address"
+        autoCapitalize="none"
+        onChangeText={(text) => updateForm("email", text.replace(/\s/g, ""))}
+      />
+
+      <Text style={styles.reg_inputLabel}>Mobile Number <Text style={styles.reg_required}>*</Text></Text>
+      <InputBox
+        placeholder="09123456789"
+        value={form.mobile}
+        keyboardType="number-pad"
+        maxLength={11}
+        onChangeText={(text) => updateForm("mobile", text.replace(/[^0-9]/g, "").slice(0, 11))}
+      />
+
+      <View style={styles.reg_divider} />
+
+      <Text style={styles.reg_inputLabel}>Password <Text style={styles.reg_required}>*</Text></Text>
+      <PasswordBox
+        placeholder="Enter a strong password"
+        value={form.password}
+        secure={!showPassword}
+        onToggle={() => setShowPassword(!showPassword)}
+        onChangeText={(text) => updateForm("password", text)}
+      />
+
+      {form.password !== "" && (
+        <View style={styles.reg_passwordStrengthBox}>
+          <View style={styles.reg_strengthHeaderRow}>
+            <Text style={styles.reg_strengthLabel}>Password strength:</Text>
+            <Text style={[styles.reg_strengthText, { color: passwordStrengthColor }]}>{passwordStrengthText}</Text>
           </View>
-        </View>
-        <View style={styles.inputGroup}>
-          <Text style={styles.inputLabel}>Confirm Password *</Text>
-          <View style={{ justifyContent: 'center' }}>
-            <TextInput style={[styles.textInput, !passwordsMatch && confirmPassword.length > 0 && { borderColor: '#EF4444' }, { paddingRight: 40 }]} placeholder="Confirm your password" placeholderTextColor="#94A3B8" secureTextEntry={!showConfirmPassword} value={confirmPassword} onChangeText={setConfirmPassword} />
-            <TouchableOpacity onPress={() => setShowConfirmPassword(!showConfirmPassword)} style={{ position: 'absolute', right: 14 }}>
-              <Ionicons name={showConfirmPassword ? "eye-off-outline" : "eye-outline"} size={20} color={muted} />
-            </TouchableOpacity>
+
+          <View style={styles.reg_segmentRow}>
+            {[1, 2, 3, 4, 5].map((num) => (
+              <View
+                key={num}
+                style={[
+                  styles.reg_strengthSegment,
+                  num <= passwordScore && { backgroundColor: passwordStrengthColor },
+                ]}
+              />
+            ))}
           </View>
-          {(!passwordsMatch && confirmPassword.length > 0) && <Text style={{ color: '#EF4444', fontSize: 12, marginTop: 4 }}>Passwords do not match.</Text>}
+
+          <PasswordCheck passed={passwordChecks.length} text="At least 8 characters" />
+          <PasswordCheck passed={passwordChecks.upper} text="Contains uppercase letter" />
+          <PasswordCheck passed={passwordChecks.lower} text="Contains lowercase letter" />
+          <PasswordCheck passed={passwordChecks.number} text="Contains number" />
+          <PasswordCheck passed={passwordChecks.special} text="Contains special character" />
         </View>
-        
-        <PrimaryButton label="Create Account" icon="checkmark-circle-outline" onPress={handleRegister} color={canSubmit ? cyan : '#CBD5E1'} disabled={!canSubmit} />
-        <Text style={{ textAlign: 'center', color: muted, fontSize: 12, marginTop: 16 }}>
-          You can add your medical history and emergency contacts later in your Profile settings.
+      )}
+
+      <Text style={styles.reg_inputLabel}>Confirm Password <Text style={styles.reg_required}>*</Text></Text>
+      <PasswordBox
+        placeholder="Re-enter your password"
+        value={form.confirmPassword}
+        secure={!showConfirmPassword}
+        onToggle={() => setShowConfirmPassword(!showConfirmPassword)}
+        onChangeText={(text) => updateForm("confirmPassword", text)}
+      />
+
+      {confirmStatus !== "" && (
+        <Text
+          style={[
+            styles.reg_confirmStatusText,
+            form.password === form.confirmPassword ? styles.reg_matchText : styles.reg_noMatchText,
+          ]}
+        >
+          {form.password === form.confirmPassword ? "✓ " : "✕ "}
+          {confirmStatus}
         </Text>
-      </Card>
-    </Screen>
+      )}
+    </>
+  );
+}
+
+function PasswordCheck({ passed, text }) {
+  return (
+    <Text style={[styles.reg_passwordCheck, passed ? styles.reg_passText : styles.reg_failText]}>
+      {passed ? "✓" : "•"} {text}
+    </Text>
+  );
+}
+
+function InputBox({ placeholder, value, onChangeText, keyboardType, autoCapitalize, maxLength }) {
+  return (
+    <View style={styles.reg_inputBox}>
+      <TextInput
+        style={styles.reg_input}
+        placeholder={placeholder}
+        placeholderTextColor="#64748B"
+        value={value}
+        onChangeText={onChangeText}
+        keyboardType={keyboardType}
+        autoCapitalize={autoCapitalize}
+        maxLength={maxLength}
+      />
+    </View>
+  );
+}
+
+function PasswordBox({ placeholder, value, onChangeText, secure, onToggle }) {
+  return (
+    <View style={styles.reg_inputBox}>
+      <TextInput
+        style={styles.reg_input}
+        placeholder={placeholder}
+        placeholderTextColor="#64748B"
+        value={value}
+        onChangeText={onChangeText}
+        secureTextEntry={secure}
+      />
+      <TouchableOpacity onPress={onToggle}>
+        <Feather name={secure ? "eye" : "eye-off"} size={18} color="#94A3B8" />
+      </TouchableOpacity>
+    </View>
+  );
+}
+
+function Dropdown({ value, placeholder, open, setOpen, options, onSelect }) {
+  return (
+    <>
+      <TouchableOpacity style={styles.reg_inputBox} onPress={() => setOpen(!open)} activeOpacity={0.8}>
+        <Text style={[styles.reg_dropdownText, !value && { color: "#64748B" }]}>{value || placeholder}</Text>
+        <Feather name="chevron-down" size={18} color="#CBD5E1" />
+      </TouchableOpacity>
+
+      {open && (
+        <View style={styles.reg_dropdownList}>
+          {options.map((item) => (
+            <TouchableOpacity
+              key={item}
+              style={styles.reg_dropdownItem}
+              onPress={() => {
+                onSelect(item);
+                setOpen(false);
+              }}
+            >
+              <Text style={styles.reg_dropdownItemText}>{item}</Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+      )}
+    </>
+  );
+}
+
+function PhilHealthBox({ checked, onPress, value, onChangeText }) {
+  return (
+    <>
+      <TouchableOpacity style={styles.reg_philHealthBox} onPress={onPress} activeOpacity={0.8}>
+        <View style={[styles.reg_checkbox, checked && styles.reg_checkedBox]}>
+          {checked && <Feather name="check" size={13} color="#fff" />}
+        </View>
+        <View style={{ flex: 1 }}>
+          <Text style={styles.reg_philHealthTitle}>I am a PhilHealth Member</Text>
+          <Text style={styles.reg_philHealthText}>PhilHealth coverage helps reduce your consultation costs</Text>
+        </View>
+      </TouchableOpacity>
+
+      {checked && (
+        <>
+          <Text style={styles.reg_inputLabel}>PhilHealth Number <Text style={styles.reg_required}>*</Text></Text>
+          <InputBox
+            placeholder="12-345678901-2"
+            value={value}
+            keyboardType="number-pad"
+            maxLength={14}
+            onChangeText={onChangeText}
+          />
+          <Text style={styles.reg_fieldHint}>12-digit PhilHealth identification number</Text>
+        </>
+      )}
+    </>
+  );
+}
+
+function ChildCard({ child, index, canRemove, onRemove, updateChild, formatDate, formatPhilHealth }) {
+  const [genderOpen, setGenderOpen] = useState(false);
+
+  return (
+    <View style={styles.reg_childCard}>
+      <View style={styles.reg_childCardHeader}>
+        <Text style={styles.reg_childTitle}>Child {index + 1}</Text>
+        {canRemove && (
+          <TouchableOpacity onPress={onRemove}>
+            <Feather name="x" size={22} color="#DC2626" />
+          </TouchableOpacity>
+        )}
+      </View>
+
+      <Text style={styles.reg_inputLabel}>First Name <Text style={styles.reg_required}>*</Text></Text>
+      <InputBox placeholder="Maria" value={child.firstName} onChangeText={(text) => updateChild(index, "firstName", text)} />
+
+      <Text style={styles.reg_inputLabel}>Last Name <Text style={styles.reg_required}>*</Text></Text>
+      <InputBox placeholder="Dela Cruz" value={child.lastName} onChangeText={(text) => updateChild(index, "lastName", text)} />
+
+      <Text style={styles.reg_inputLabel}>Date of Birth <Text style={styles.reg_required}>*</Text></Text>
+      <View style={styles.reg_inputBox}>
+        <TextInput
+          style={styles.reg_input}
+          placeholder="mm/dd/yyyy"
+          placeholderTextColor="#64748B"
+          keyboardType="number-pad"
+          maxLength={10}
+          value={child.birthDate}
+          onChangeText={(text) => updateChild(index, "birthDate", formatDate(text))}
+        />
+        <Feather name="calendar" size={16} color="#CBD5E1" />
+      </View>
+
+      <Text style={styles.reg_inputLabel}>Gender <Text style={styles.reg_required}>*</Text></Text>
+      <Dropdown
+        value={child.gender}
+        placeholder="Select gender"
+        open={genderOpen}
+        setOpen={setGenderOpen}
+        options={["Male", "Female", "Prefer not to say"]}
+        onSelect={(item) => updateChild(index, "gender", item)}
+      />
+
+      <TouchableOpacity
+        style={styles.reg_childPhilHealthBox}
+        onPress={() => updateChild(index, "philHealth", !child.philHealth)}
+        activeOpacity={0.8}
+      >
+        <View style={[styles.reg_checkbox, child.philHealth && styles.reg_checkedBox]}>
+          {child.philHealth && <Feather name="check" size={13} color="#fff" />}
+        </View>
+        <Text style={styles.reg_philHealthTitle}>PhilHealth Member</Text>
+      </TouchableOpacity>
+
+      {child.philHealth && (
+        <InputBox
+          placeholder="12-345678901-2"
+          value={child.philHealthNumber}
+          keyboardType="number-pad"
+          maxLength={14}
+          onChangeText={(text) => updateChild(index, "philHealthNumber", formatPhilHealth(text))}
+        />
+      )}
+    </View>
+  );
+}
+
+function FamilyMemberCard({
+  member,
+  index,
+  canRemove,
+  onRemove,
+  updateFamilyMember,
+  formatDate,
+  formatPhilHealth,
+}) {
+  const [genderOpen, setGenderOpen] = useState(false);
+  const [relationshipOpen, setRelationshipOpen] = useState(false);
+
+  return (
+    <View style={styles.reg_childCard}>
+      <View style={styles.reg_childCardHeader}>
+        <Text style={styles.reg_childTitle}>Family Member {index + 1}</Text>
+        {canRemove && (
+          <TouchableOpacity onPress={onRemove}>
+            <Feather name="x" size={22} color="#DC2626" />
+          </TouchableOpacity>
+        )}
+      </View>
+
+      <Text style={styles.reg_inputLabel}>First Name <Text style={styles.reg_required}>*</Text></Text>
+      <InputBox
+        placeholder="Maria"
+        value={member.firstName}
+        onChangeText={(text) => updateFamilyMember(index, "firstName", text)}
+      />
+
+      <Text style={styles.reg_inputLabel}>Last Name <Text style={styles.reg_required}>*</Text></Text>
+      <InputBox
+        placeholder="Dela Cruz"
+        value={member.lastName}
+        onChangeText={(text) => updateFamilyMember(index, "lastName", text)}
+      />
+
+      <Text style={styles.reg_inputLabel}>Date of Birth <Text style={styles.reg_required}>*</Text></Text>
+      <View style={styles.reg_inputBox}>
+        <TextInput
+          style={styles.reg_input}
+          placeholder="mm/dd/yyyy"
+          placeholderTextColor="#64748B"
+          keyboardType="number-pad"
+          maxLength={10}
+          value={member.birthDate}
+          onChangeText={(text) => updateFamilyMember(index, "birthDate", formatDate(text))}
+        />
+        <Feather name="calendar" size={16} color="#CBD5E1" />
+      </View>
+
+      <Text style={styles.reg_inputLabel}>Gender <Text style={styles.reg_required}>*</Text></Text>
+      <Dropdown
+        value={member.gender}
+        placeholder="Select gender"
+        open={genderOpen}
+        setOpen={setGenderOpen}
+        options={["Male", "Female", "Prefer not to say"]}
+        onSelect={(item) => updateFamilyMember(index, "gender", item)}
+      />
+
+      <Text style={styles.reg_inputLabel}>Relationship <Text style={styles.reg_required}>*</Text></Text>
+      <Dropdown
+        value={member.relationship}
+        placeholder="Select relationship"
+        open={relationshipOpen}
+        setOpen={setRelationshipOpen}
+        options={["Spouse", "Child", "Parent", "Sibling", "Grandparent", "Other"]}
+        onSelect={(item) => updateFamilyMember(index, "relationship", item)}
+      />
+
+      <TouchableOpacity
+        style={styles.reg_childPhilHealthBox}
+        onPress={() => updateFamilyMember(index, "philHealth", !member.philHealth)}
+        activeOpacity={0.8}
+      >
+        <View style={[styles.reg_checkbox, member.philHealth && styles.reg_checkedBox]}>
+          {member.philHealth && <Feather name="check" size={13} color="#fff" />}
+        </View>
+        <Text style={styles.reg_philHealthTitle}>PhilHealth Member</Text>
+      </TouchableOpacity>
+
+      {member.philHealth && (
+        <InputBox
+          placeholder="12-345678901-2"
+          value={member.philHealthNumber}
+          keyboardType="number-pad"
+          maxLength={14}
+          onChangeText={(text) =>
+            updateFamilyMember(index, "philHealthNumber", formatPhilHealth(text))
+          }
+        />
+      )}
+    </View>
+  );
+}
+
+function OptionalField({ label, value, placeholder, onChangeText }) {
+  const [open, setOpen] = useState(false);
+
+  return (
+    <View style={styles.reg_optionalWrapper}>
+      <TouchableOpacity onPress={() => setOpen(!open)}>
+        <Text style={styles.reg_optionalLabel}>{label}</Text>
+      </TouchableOpacity>
+
+      {open && <InputBox placeholder={placeholder} value={value} onChangeText={onChangeText} />}
+    </View>
+  );
+}
+
+function LoginRow({ onLogin }) {
+  return (
+    <View style={styles.reg_bottomLoginRow}>
+      <Text style={styles.reg_loginPrompt}>Already have an account?</Text>
+      <TouchableOpacity onPress={onLogin}>
+        <Text style={styles.reg_loginText}> Login</Text>
+      </TouchableOpacity>
+    </View>
+  );
+}
+
+function SecureText() {
+  return (
+    <View style={styles.reg_secureRow}>
+      <Text style={styles.reg_secureText}>🔒 Your information is secure and encrypted</Text>
+    </View>
   );
 }
 
@@ -1050,8 +2180,9 @@ export function EditProfileScreen({ navigation, route }) {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   const bloodTypes = ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-', 'Unknown'];
-  const isEmailValid = email === '' || (email.includes('@') && email.includes('.'));
-  const isEmergencyEmailValid = emergencyEmail === '' || (emergencyEmail.includes('@') && emergencyEmail.includes('.'));
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  const isEmailValid = email === '' || emailRegex.test(email.trim());
+  const isEmergencyEmailValid = emergencyEmail === '' || emailRegex.test(emergencyEmail.trim());
   const isPhoneValid = phone === '' || phone.replace(/\D/g, '').length === 12;
   const isEmergencyPhoneValid = emergencyPhone === '' || emergencyPhone.replace(/\D/g, '').length === 12;
   const passwordsMatch = password === confirmPassword;
@@ -3866,7 +4997,7 @@ export function MessagesScreen({ navigation, route }) {
   const activeChatIdRef = useRef(activeChatId);
   const scrollViewRef = useRef(null);
   const [inputText, setInputText] = useState('');
-  const isMockUser = true; // Enabled for testing with any user account
+  const isMockUser = !currentUser; // Use mock data only if no user is logged in
 
   useEffect(() => {
     activeChatIdRef.current = activeChatId;
@@ -5524,4 +6655,90 @@ const styles = StyleSheet.create({
   linkIconBg: { width: 32, height: 32, borderRadius: 8, backgroundColor: '#F1FAFE', alignItems: 'center', justifyContent: 'center', marginRight: 12 },
   linkText: { flex: 1, color: ink, fontSize: 14, fontWeight: '700' },
   linkDivider: { height: 1, backgroundColor: '#F1F5F9', marginLeft: 60 },
+
+  // --- REGISTRATION STYLES ---
+  reg_mainContainer: { flex: 1, backgroundColor: "#F8FAFC", paddingTop: Platform.OS === 'android' ? StatusBar.currentHeight : 0 },
+  reg_topBar: { height: 62, backgroundColor: "#fff", paddingHorizontal: 16, flexDirection: "row", alignItems: "center", justifyContent: "space-between", borderBottomWidth: 1, borderBottomColor: "#E5E7EB" },
+  reg_logoContainer: { flexDirection: "row", alignItems: "center" },
+  reg_logoIcon: { padding: 7, borderRadius: 8, marginRight: 8 },
+  reg_logoText: { fontSize: 20, fontWeight: "800", color: "#0F172A" },
+  reg_logoPlus: { color: "#2563EB" },
+  reg_backHomeTopText: { fontSize: 13, color: "#334155", fontWeight: "700" },
+  reg_headerSection: { alignItems: "center", paddingHorizontal: 20, paddingTop: 30, paddingBottom: 24 },
+  reg_title: { fontSize: 27, fontWeight: "900", color: "#020617", textAlign: "center", marginBottom: 12 },
+  reg_subtitle: { fontSize: 16, color: "#334155", textAlign: "center", lineHeight: 24 },
+  reg_optionCard: { backgroundColor: "#fff", marginHorizontal: 18, marginBottom: 24, paddingVertical: 30, paddingHorizontal: 22, borderRadius: 14, borderWidth: 1, borderColor: "#E2E8F0", alignItems: "center", shadowColor: "#000", shadowOpacity: 0.06, shadowOffset: { width: 0, height: 5 }, shadowRadius: 10, elevation: 3 },
+  reg_optionIconBox: { width: 74, height: 74, borderRadius: 12, justifyContent: "center", alignItems: "center", marginBottom: 24 },
+  reg_optionTitle: { fontSize: 19, fontWeight: "900", color: "#020617", textAlign: "center", marginBottom: 12 },
+  reg_optionSubtitle: { fontSize: 13, color: "#0F172A", textAlign: "center", lineHeight: 20, marginBottom: 22 },
+  reg_continueText: { fontSize: 14, color: "#2563EB", fontWeight: "700" },
+  reg_infoCard: { marginHorizontal: 18, marginTop: 6, marginBottom: 32, backgroundColor: "#EFF6FF", borderWidth: 1, borderColor: "#BFDBFE", borderRadius: 12, padding: 18, flexDirection: "row", alignItems: "flex-start" },
+  reg_infoIcon: { width: 38, height: 38, borderRadius: 8, backgroundColor: "#2563EB", justifyContent: "center", alignItems: "center", marginRight: 14 },
+  reg_infoTitle: { fontSize: 16, fontWeight: "900", color: "#020617", marginBottom: 8 },
+  reg_infoText: { fontSize: 13, color: "#0F172A", lineHeight: 22 },
+  reg_formHeader: { alignItems: "center", paddingHorizontal: 20, paddingTop: 30, paddingBottom: 28 },
+  reg_formHeaderTitle: { fontSize: 28, fontWeight: "900", color: "#020617", textAlign: "center", marginBottom: 12 },
+  reg_formHeaderSubtitle: { fontSize: 16, color: "#334155", textAlign: "center", lineHeight: 24 },
+  reg_registrationHero: { alignItems: "center", paddingHorizontal: 20, paddingTop: 30, paddingBottom: 28 },
+  reg_heroIconBox: { width: 62, height: 62, borderRadius: 14, justifyContent: "center", alignItems: "center", marginBottom: 20 },
+  reg_registrationTitle: { fontSize: 27, fontWeight: "900", color: "#020617", textAlign: "center", marginBottom: 12 },
+  reg_registrationSubtitle: { fontSize: 16, color: "#334155", textAlign: "center", lineHeight: 24 },
+  reg_stepRow: { flexDirection: "row", alignItems: "center", marginTop: 28 },
+  reg_stepCircle: { width: 38, height: 38, borderRadius: 19, justifyContent: "center", alignItems: "center" },
+  reg_stepCircleText: { color: "#fff", fontWeight: "900", fontSize: 16 },
+  reg_stepLine: { width: 44, height: 4, backgroundColor: "#E5E7EB", marginHorizontal: 14 },
+  reg_formCard: { backgroundColor: "#fff", marginHorizontal: 14, marginBottom: 30, padding: 22, borderRadius: 14, borderWidth: 1, borderColor: "#E2E8F0", shadowColor: "#000", shadowOpacity: 0.06, shadowOffset: { width: 0, height: 5 }, shadowRadius: 10, elevation: 3 },
+  reg_formTitle: { fontSize: 20, fontWeight: "900", color: "#020617", marginBottom: 18 },
+  reg_inputLabel: { fontSize: 13, fontWeight: "700", color: "#020617", marginBottom: 8, marginTop: 10 },
+  reg_required: { color: "#EF4444" },
+  reg_inputBox: { minHeight: 42, backgroundColor: "#F1F1F3", borderRadius: 8, paddingHorizontal: 12, flexDirection: "row", alignItems: "center", marginBottom: 12 },
+  reg_input: { flex: 1, fontSize: 14, color: "#020617" },
+  reg_divider: { height: 1, backgroundColor: "#E2E8F0", marginVertical: 12 },
+  reg_dropdownText: { flex: 1, fontSize: 14, color: "#020617" },
+  reg_dropdownList: { backgroundColor: "#fff", borderWidth: 1, borderColor: "#E2E8F0", borderRadius: 8, marginTop: -8, marginBottom: 12, overflow: "hidden" },
+  reg_dropdownItem: { paddingVertical: 12, paddingHorizontal: 14 },
+  reg_dropdownItemText: { fontSize: 14, color: "#020617" },
+  reg_philHealthBox: { backgroundColor: "#EFF6FF", borderRadius: 10, padding: 16, flexDirection: "row", alignItems: "flex-start", marginTop: 12, marginBottom: 18 },
+  reg_childPhilHealthBox: { backgroundColor: "#EFF6FF", borderRadius: 8, padding: 14, flexDirection: "row", alignItems: "center", marginBottom: 12 },
+  reg_checkbox: { width: 17, height: 17, borderRadius: 3, borderWidth: 1, borderColor: "#CBD5E1", backgroundColor: "#fff", marginRight: 12, marginTop: 2, justifyContent: "center", alignItems: "center" },
+  reg_checkedBox: { backgroundColor: "#020617", borderColor: "#020617" },
+  reg_philHealthTitle: { fontSize: 14, fontWeight: "900", color: "#020617", marginBottom: 4 },
+  reg_philHealthText: { fontSize: 13, color: "#334155", lineHeight: 20 },
+  reg_fieldHint: { fontSize: 11, color: "#64748B", marginTop: -6, marginBottom: 12 },
+  reg_optionalWrapper: { borderTopWidth: 1, borderTopColor: "#E2E8F0", paddingTop: 20, marginTop: 2, marginBottom: 16 },
+  reg_optionalLabel: { color: "#2563EB", fontSize: 14, fontWeight: "700" },
+  reg_passwordStrengthBox: { marginTop: -4, marginBottom: 10 },
+  reg_strengthHeaderRow: { flexDirection: "row", justifyContent: "space-between", marginBottom: 6 },
+  reg_strengthLabel: { fontSize: 12, color: "#334155" },
+  reg_strengthText: { fontSize: 12, fontWeight: "800" },
+  reg_segmentRow: { flexDirection: "row", justifyContent: "space-between", marginBottom: 8 },
+  reg_strengthSegment: { flex: 1, height: 4, backgroundColor: "#E5E7EB", borderRadius: 4, marginRight: 4 },
+  reg_passwordCheck: { fontSize: 12, marginBottom: 4 },
+  reg_passText: { color: "#16A34A" },
+  reg_failText: { color: "#94A3B8" },
+  reg_confirmStatusText: { fontSize: 12, fontWeight: "800", marginTop: -4, marginBottom: 8 },
+  reg_matchText: { color: "#16A34A" },
+  reg_noMatchText: { color: "#DC2626" },
+  reg_errorText: { color: "#DC2626", fontSize: 13, fontWeight: "700", lineHeight: 20, marginBottom: 12 },
+  reg_primaryButton: { height: 46, backgroundColor: "#2563EB", borderRadius: 10, justifyContent: "center", alignItems: "center", marginTop: 6 },
+  reg_flexButton: { flex: 1, marginLeft: 8 },
+  reg_primaryButtonText: { color: "#fff", fontSize: 15, fontWeight: "900" },
+  reg_secondaryButton: { flex: 1, height: 46, backgroundColor: "#fff", borderWidth: 1, borderColor: "#E2E8F0", borderRadius: 10, justifyContent: "center", alignItems: "center", marginRight: 8 },
+  reg_secondaryButtonText: { color: "#020617", fontSize: 15, fontWeight: "800" },
+  reg_twoButtons: { flexDirection: "row", marginTop: 10 },
+  reg_childInfoNotice: { backgroundColor: "#F0FDF4", borderWidth: 1, borderColor: "#86EFAC", borderRadius: 8, padding: 12, marginBottom: 24 },
+  reg_familyInfoNotice: { backgroundColor: "#FAF5FF", borderWidth: 1, borderColor: "#D8B4FE", borderRadius: 8, padding: 12, marginBottom: 24 },
+  reg_childInfoNoticeText: { fontSize: 13, color: "#334155", lineHeight: 20 },
+  reg_childCard: { borderWidth: 1, borderColor: "#E2E8F0", borderRadius: 12, padding: 22, marginBottom: 22 },
+  reg_childCardHeader: { flexDirection: "row", justifyContent: "space-between", marginBottom: 12 },
+  reg_childTitle: { fontSize: 17, fontWeight: "900", color: "#020617" },
+  reg_addChildButton: { borderWidth: 1, borderStyle: "dashed", borderColor: "#22C55E", borderRadius: 10, height: 46, justifyContent: "center", alignItems: "center", flexDirection: "row", marginBottom: 12 },
+  reg_addChildText: { marginLeft: 10, fontSize: 14, color: "#16A34A", fontWeight: "800" },
+  reg_addFamilyButton: { borderWidth: 1, borderStyle: "dashed", borderColor: "#C084FC", borderRadius: 10, height: 46, justifyContent: "center", alignItems: "center", flexDirection: "row", marginBottom: 12 },
+  reg_addFamilyText: { marginLeft: 10, fontSize: 14, color: "#9333EA", fontWeight: "800" },
+  reg_bottomLoginRow: { flexDirection: "row", justifyContent: "center", alignItems: "center", marginTop: 22, marginBottom: 14 },
+  reg_loginPrompt: { fontSize: 13, color: "#475569" },
+  reg_loginText: { fontSize: 14, color: "#2563EB", fontWeight: "800" },
+  reg_secureRow: { alignItems: "center", paddingBottom: 34 },
+  reg_secureText: { color: "#64748B", fontSize: 13 },
 });

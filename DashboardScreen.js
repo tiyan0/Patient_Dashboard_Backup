@@ -14,7 +14,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { API_URL, currentUser } from './config';
 
 export default function DashboardScreen({ navigation, route }) {
-  const isMockUser = true; // Enabled for testing with any user account
+  const isMockUser = !currentUser; // Use mock data only if no user is logged in
 
   const [pendingReferrals, setPendingReferrals] = useState(isMockUser ? [
     {

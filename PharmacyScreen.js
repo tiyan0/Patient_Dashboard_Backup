@@ -21,7 +21,7 @@ export default function PharmacyScreen({ navigation }) {
   const [trackingModalVisible, setTrackingModalVisible] = useState(false);
   const [trackedOrder, setTrackedOrder] = useState(null);
   const [searchQuery, setSearchQuery] = useState('');
-  const isMockUser = true; // Enabled for testing with any user account
+  const isMockUser = !currentUser; // Use mock data only if no user is logged in
 
   const [orders, setOrders] = useState(isMockUser ? [
     {
