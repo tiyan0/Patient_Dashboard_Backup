@@ -14,7 +14,8 @@ import { Ionicons } from '@expo/vector-icons';
 import { API_URL, currentUser } from './config';
 
 export default function DashboardScreen({ navigation, route }) {
-  const isMockUser = !currentUser; // Use mock data only if no user is logged in
+  const isMockUser = !currentUser || currentUser?.id === 'mock-user-123'; // Use mock data if no user is logged in, or if it's the mock user
+  const [notificationCount, setNotificationCount] = useState(isMockUser ? 3 : 0);
 
   const [pendingReferrals, setPendingReferrals] = useState(isMockUser ? [
     {
@@ -88,11 +89,22 @@ export default function DashboardScreen({ navigation, route }) {
             <Text style={styles.logoSubtitle}>Your Health Partner</Text>
           </View>
         </View>
-        <TouchableOpacity style={styles.bellIcon}>
+        <TouchableOpacity 
+          style={styles.bellIcon}
+          onPress={() => {
+            if (isMockUser) {
+              setNotificationCount(0);
+              // In a real app, this would likely navigate to a notifications screen
+              // and the notifications would be marked as read there.
+            }
+          }}
+        >
           <Ionicons name="notifications-outline" size={20} color="#0F172A" />
-          <View style={styles.notificationBadge}>
-            <Text style={styles.badgeText}>3</Text>
-          </View>
+          {notificationCount > 0 && (
+            <View style={styles.notificationBadge}>
+              <Text style={styles.badgeText}>{notificationCount}</Text>
+            </View>
+          )}
         </TouchableOpacity>
       </View>
 
@@ -111,7 +123,7 @@ export default function DashboardScreen({ navigation, route }) {
             {[
               { title: 'Video Consult', sub: 'Connect with a doctor', icon: 'videocam', route: 'VideoConsult' },
               { title: 'Medical Records', sub: 'View your health history', icon: 'document-text', route: 'MedicalRecords' },
-              { title: 'Call Doctor', sub: 'Choose consultation type', icon: 'call', route: 'VideoConsult' },
+              { title: 'Call Doctor', sub: 'Choose consultation type', icon: 'call', route: 'CallDoctor' },
               { title: 'Message', sub: 'Chat with your care team', icon: 'chatbubble-ellipses', route: 'Messages' }
             ].map((action, idx) => (
               <TouchableOpacity
@@ -174,7 +186,7 @@ export default function DashboardScreen({ navigation, route }) {
               <Ionicons name="alert-circle-outline" size={20} color="#F59E0B" />
               <Text style={styles.sectionTitle}>Pending Referrals - Action Required</Text>
             </View>
-            <TouchableOpacity onPress={() => navigation.navigate('ReferralDetails')}>
+            <TouchableOpacity onPress={() => navigation.navigate('MedicalRecords', { initialCategory: 'Referrals' })}>
               <Text style={styles.viewAllText}>View All →</Text>
             </TouchableOpacity>
           </View>

@@ -8,6 +8,7 @@ import {
   TouchableOpacity,
   Modal,
   Platform,
+  Alert,
   Linking,
   TextInput,
 } from 'react-native';
@@ -21,7 +22,7 @@ export default function PharmacyScreen({ navigation }) {
   const [trackingModalVisible, setTrackingModalVisible] = useState(false);
   const [trackedOrder, setTrackedOrder] = useState(null);
   const [searchQuery, setSearchQuery] = useState('');
-  const isMockUser = !currentUser; // Use mock data only if no user is logged in
+  const isMockUser = !currentUser || currentUser?.id === 'mock-user-123'; // Use mock data if no user is logged in, or if it's the mock user
 
   const [orders, setOrders] = useState(isMockUser ? [
     {
@@ -261,7 +262,24 @@ export default function PharmacyScreen({ navigation }) {
                       <TouchableOpacity 
                         key={idx} 
                         style={[styles.actionButton, btn.primary ? styles.btnPrimary : styles.btnOutline]}
-                        onPress={() => {}}
+                        onPress={() => {
+                          if (btn.label === 'Track Order') {
+                            setTrackedOrder(order);
+                            setTrackingModalVisible(true);
+                          } else if (btn.label === 'Contact Pharmacy') {
+                            Alert.alert(
+                              'Contact Pharmacy',
+                              'This would open your phone to call or message the pharmacy.',
+                              [
+                                { text: 'Call (mock)', onPress: () => Alert.alert('Calling...', 'Dialing pharmacy support.') },
+                                { text: 'Message (mock)', onPress: () => Alert.alert('Messaging...', 'Opening messaging app.') },
+                                { text: 'Cancel', style: 'cancel' },
+                              ]
+                            );
+                          } else if (btn.label === 'Get Directions') {
+                            openDirections(order.deliveryText);
+                          }
+                        }}
                       >
                         <Text style={[styles.actionButtonText, btn.primary ? styles.btnPrimaryText : styles.btnOutlineText]}>
                           {btn.label}
@@ -303,7 +321,7 @@ export default function PharmacyScreen({ navigation }) {
                   <TouchableOpacity style={[styles.actionButton, styles.btnOutline]} onPress={() => togglePreferred(pharmacy.id)}>
                     <Text style={styles.btnOutlineText}>{pharmacy.preferred ? 'Remove Preferred' : 'Set as Preferred'}</Text>
                   </TouchableOpacity>
-                  <TouchableOpacity style={[styles.actionButton, styles.btnOutline]} onPress={() => {}}>
+                  <TouchableOpacity style={[styles.actionButton, styles.btnOutline]} onPress={() => openDirections(pharmacy.address)}>
                     <Text style={styles.btnOutlineText}>Directions</Text>
                   </TouchableOpacity>
                 </View>

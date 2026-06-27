@@ -7,13 +7,17 @@ import {
   ScrollView,
   TouchableOpacity,
   Platform,
+  Linking,
+  Modal,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 
 import { currentUser } from './config';
 
+const MONTH_NAMES = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+
 export default function PhysicalTherapyScreen({ navigation }) {
-  const isMockUser = !currentUser; // Use mock data only if no user is logged in
+  const isMockUser = !currentUser || currentUser?.id === 'mock-user-123'; // Use mock data if no user is logged in, or if it's the mock user
 
   const [exercises, setExercises] = useState(isMockUser ? [
     { id: '1', name: 'Quad Sets', desc: '3 sets × 15 reps • 2x daily', completed: true },
@@ -21,14 +25,57 @@ export default function PhysicalTherapyScreen({ navigation }) {
     { id: '3', name: 'Heel Slides', desc: '3 sets × 12 reps • 2x daily', completed: false },
     { id: '4', name: 'Ankle Pumps', desc: '3 sets × 20 reps • 3x daily', completed: false },
   ] : []);
-
-  const upcomingSessions = isMockUser ? [
+  
+  const [upcomingSessions, setUpcomingSessions] = useState(isMockUser ? [
     { id: 's1', type: 'In-Person Session', focus: 'Strength & Mobility', status: 'Scheduled', date: 'April 2, 2026', time: '3:00 PM', location: 'PT Clinic - Room 201' },
     { id: 's2', type: 'In-Person Session', focus: 'Range of Motion', status: 'Scheduled', date: 'April 9, 2026', time: '3:00 PM', location: 'PT Clinic - Room 201' },
-  ] : [];
+  ] : []);
+
+  const [showRescheduleModal, setShowRescheduleModal] = useState(false);
+  const [sessionToReschedule, setSessionToReschedule] = useState(null);
+  const [newDate, setNewDate] = useState('');
+  const [newTime, setNewTime] = useState(null);
+  const [viewDate, setViewDate] = useState(new Date());
 
   const toggleExercise = (id) => {
     setExercises(exercises.map(ex => ex.id === id ? { ...ex, completed: true } : ex));
+  };
+
+  const handleReschedule = () => {
+    if (sessionToReschedule && newDate && newTime) {
+      setUpcomingSessions(prevSessions =>
+        prevSessions.map(session =>
+          session.id === sessionToReschedule.id
+            ? { ...session, date: newDate, time: newTime }
+            : session
+        )
+      );
+      setShowRescheduleModal(false);
+      setSessionToReschedule(null);
+      setNewDate('');
+      setNewTime(null);
+    }
+  };
+
+  const openRescheduleModal = (session) => {
+    setSessionToReschedule(session);
+    // The date string format 'Month Day, Year' (e.g., 'April 2, 2026') is not
+    // reliably parsed by `new Date()` across all JavaScript engines (like Hermes).
+    // A more robust approach is to parse the string's components manually.
+    const dateParts = session.date.replace(',', '').split(' '); // -> ['April', '2', '2026']
+    const monthIndex = MONTH_NAMES.findIndex(m => m.toLowerCase() === dateParts[0].toLowerCase());
+    const day = parseInt(dateParts[1], 10);
+    const year = parseInt(dateParts[2], 10);
+
+    if (monthIndex !== -1 && !isNaN(day) && !isNaN(year)) {
+      // Constructing with parts is more reliable than string parsing.
+      setViewDate(new Date(year, monthIndex, day));
+    } else {
+      setViewDate(new Date()); // Fallback to prevent crash
+    }
+    setNewDate(session.date);
+    setNewTime(session.time);
+    setShowRescheduleModal(true);
   };
 
   const completedCount = exercises.filter(ex => ex.completed).length;
@@ -94,7 +141,7 @@ export default function PhysicalTherapyScreen({ navigation }) {
                 </View>
               </View>
 
-              <TouchableOpacity style={styles.fullScheduleBtn}>
+              <TouchableOpacity style={styles.fullScheduleBtn} onPress={() => navigation.navigate('Appointments')}>
                 <Text style={styles.fullScheduleBtnText}>View Full Schedule</Text>
               </TouchableOpacity>
             </View>
@@ -136,7 +183,7 @@ export default function PhysicalTherapyScreen({ navigation }) {
                 </View>
                 {!ex.completed && (
                   <View style={styles.exActionRow}>
-                    <TouchableOpacity style={styles.exOutlineBtn}>
+                    <TouchableOpacity style={styles.exOutlineBtn} onPress={() => Linking.openURL('https://www.youtube.com/watch?v=dQw4w9WgXcQ')}>
                       <Ionicons name="play-circle-outline" size={16} color="#089FB4" style={{ marginRight: 4 }} />
                       <Text style={styles.exOutlineBtnText}>Watch Video</Text>
                     </TouchableOpacity>
@@ -177,10 +224,10 @@ export default function PhysicalTherapyScreen({ navigation }) {
                 </View>
 
                 <View style={styles.exActionRow}>
-                  <TouchableOpacity style={styles.sessOutlineBtn}>
+                  <TouchableOpacity style={styles.sessOutlineBtn} onPress={() => openRescheduleModal(sess)}>
                     <Text style={styles.sessOutlineBtnText}>Reschedule</Text>
                   </TouchableOpacity>
-                  <TouchableOpacity style={styles.sessOutlineBtn}>
+                  <TouchableOpacity style={styles.sessOutlineBtn} onPress={() => Linking.openURL(`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(sess.location)}`)}>
                     <Text style={styles.sessOutlineBtnText}>Directions</Text>
                   </TouchableOpacity>
                 </View>
@@ -209,6 +256,93 @@ export default function PhysicalTherapyScreen({ navigation }) {
         )}
 
       </ScrollView>
+
+      <Modal visible={showRescheduleModal} transparent={true} animationType="slide" onRequestClose={() => setShowRescheduleModal(false)}>
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Reschedule Session</Text>
+              <TouchableOpacity onPress={() => setShowRescheduleModal(false)} style={styles.closeButton}>
+                <Ionicons name="close" size={24} color="#0F172A" />
+              </TouchableOpacity>
+            </View>
+            <ScrollView>
+              <Text style={styles.modalSubtitle}>
+                Rescheduling for <Text style={{ fontWeight: 'bold' }}>{sessionToReschedule?.focus}</Text> on <Text style={{ fontWeight: 'bold' }}>{sessionToReschedule?.date}</Text> at <Text style={{ fontWeight: 'bold' }}>{sessionToReschedule?.time}</Text>.
+              </Text>
+              
+              <Text style={styles.inputLabel}>Select New Date</Text>
+              <View style={styles.calendarContainer}>
+                <View style={styles.calendarHeader}>
+                  <TouchableOpacity onPress={() => setViewDate(prev => new Date(prev.getFullYear(), prev.getMonth() - 1, 1))}><Ionicons name="chevron-back" size={20} color="#45627F" /></TouchableOpacity>
+                  <Text style={styles.calendarMonthText}>
+                    {MONTH_NAMES[viewDate.getMonth()]} {viewDate.getFullYear()}
+                  </Text>
+                  <TouchableOpacity onPress={() => setViewDate(prev => new Date(prev.getFullYear(), prev.getMonth() + 1, 1))}><Ionicons name="chevron-forward" size={20} color="#45627F" /></TouchableOpacity>
+                </View>
+                <View style={styles.calendarGridHeader}>
+                  {['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'].map(day => (
+                    <Text key={day} style={styles.calendarDayHeader}>{day}</Text>
+                  ))}
+                </View>
+                <View style={styles.calendarGrid}>
+                  {Array.from({ length: new Date(viewDate.getFullYear(), viewDate.getMonth(), 1).getDay() }).map((_, i) => (
+                    <View key={`empty-${i}`} style={styles.calendarDayContainer} />
+                  ))}
+                  {Array.from({ length: new Date(viewDate.getFullYear(), viewDate.getMonth() + 1, 0).getDate() }).map((_, i) => {
+                    const day = i + 1;
+                    // Using a hardcoded month name array is more reliable than `toLocaleString`
+                    // which can vary based on device locale and cause selection bugs.
+                    const dateStr = `${MONTH_NAMES[viewDate.getMonth()]} ${day}, ${viewDate.getFullYear()}`;
+                    const isSelected = newDate === dateStr;
+                    return (
+                      <TouchableOpacity
+                        key={day}
+                        style={styles.calendarDayContainer}
+                        onPress={() => setNewDate(dateStr)}
+                      >
+                        <View style={[styles.calendarDay, isSelected && styles.calendarDaySelected]}>
+                          <Text style={[styles.calendarDayText, isSelected && styles.calendarDayTextSelected]}>{day}</Text>
+                        </View>
+                      </TouchableOpacity>
+                    );
+                  })}
+                </View>
+              </View>
+
+              {newDate?.length > 0 && (
+                <>
+                  <Text style={[styles.inputLabel, { marginTop: 16 }]}>Select New Time</Text>
+                  <View style={styles.timeGrid}>
+                    {['08:00 AM', '09:00 AM', '10:00 AM', '11:00 AM', '01:00 PM', '02:00 PM', '03:00 PM', '04:00 PM'].map((t, idx) => (
+                      <TouchableOpacity
+                        key={idx}
+                        style={[styles.timeButton, newTime === t && styles.timeButtonSelected]}
+                        onPress={() => setNewTime(t)}
+                      >
+                        <Text style={[styles.timeButtonText, newTime === t && styles.timeButtonTextSelected]}>{t}</Text>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                </>
+              )}
+
+              <View style={styles.modalButtonRow}>
+                <TouchableOpacity style={styles.modalCancelButton} onPress={() => setShowRescheduleModal(false)}>
+                  <Text style={styles.modalCancelButtonText}>Cancel</Text>
+                </TouchableOpacity>
+                <TouchableOpacity 
+                  style={[styles.modalSaveButton, (!newDate || !newTime) && styles.modalSaveButtonDisabled]} 
+                  onPress={handleReschedule}
+                  disabled={!newDate || !newTime}
+                >
+                  <Text style={styles.modalSaveButtonText}>Save Changes</Text>
+                </TouchableOpacity>
+              </View>
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -569,5 +703,168 @@ const styles = StyleSheet.create({
     color: '#047857',
     fontSize: 13,
     lineHeight: 18,
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(15, 23, 42, 0.6)',
+    justifyContent: 'flex-end',
+  },
+  modalContent: {
+    backgroundColor: '#FFFFFF',
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    paddingHorizontal: 20,
+    paddingTop: 20,
+    maxHeight: '85%',
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: '800',
+    color: '#0F172A',
+  },
+  modalSubtitle: {
+    fontSize: 14,
+    color: '#475569',
+    marginBottom: 20,
+    lineHeight: 20,
+  },
+  closeButton: {
+    padding: 4,
+    backgroundColor: '#F1F5F9',
+    borderRadius: 20,
+  },
+  inputLabel: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#0F172A',
+    marginBottom: 12,
+  },
+  calendarContainer: {
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    borderRadius: 12,
+    padding: 12,
+    backgroundColor: '#FFFFFF',
+  },
+  calendarHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  calendarMonthText: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: '#0F172A',
+  },
+  calendarGridHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    marginBottom: 8,
+  },
+  calendarDayHeader: {
+    width: 32,
+    textAlign: 'center',
+    color: '#64748B',
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  calendarGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+  },
+  calendarDayContainer: {
+    width: '14.28%',
+    height: 40,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  calendarDay: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  calendarDaySelected: {
+    backgroundColor: '#089FB4',
+  },
+  calendarDayText: {
+    color: '#0F172A',
+    fontSize: 14,
+    fontWeight: '500',
+  },
+  calendarDayTextSelected: {
+    color: '#FFFFFF',
+    fontWeight: '700',
+  },
+  timeGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 10,
+  },
+  timeButton: {
+    width: '31%',
+    paddingVertical: 12,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    backgroundColor: '#F8FAFC',
+    alignItems: 'center',
+  },
+  timeButtonSelected: {
+    borderColor: '#089FB4',
+    backgroundColor: '#E0F7FA',
+  },
+  timeButtonText: {
+    color: '#0F172A',
+    fontWeight: '700',
+    fontSize: 12,
+  },
+  timeButtonTextSelected: {
+    color: '#089FB4',
+  },
+  modalButtonRow: {
+    flexDirection: 'row',
+    gap: 12,
+    marginTop: 24,
+    paddingBottom: 24,
+  },
+  modalCancelButton: {
+    flex: 1,
+    height: 48,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#CBD5E1',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#FFFFFF',
+  },
+  modalCancelButtonText: {
+    color: '#0F172A',
+    fontSize: 14,
+    fontWeight: '700',
+  },
+  modalSaveButton: {
+    flex: 1,
+    height: 48,
+    borderRadius: 8,
+    backgroundColor: '#089FB4',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  modalSaveButtonDisabled: {
+    backgroundColor: '#CBD5E1',
+  },
+  modalSaveButtonText: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: '700',
   },
 });

@@ -12,6 +12,8 @@ import {
 } from 'react-native';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 
+import { currentUser } from './config';
+
 const onlineServices = [
   {
     title: 'Request Nurse Callback',
@@ -35,7 +37,7 @@ const onlineServices = [
     iconBg: '#E0F7FA',
     buttonColor: '#0EA5E9',
     time: '24/7 availability',
-    price: '$25',
+    price: '₱1000',
     suffix: '/ session',
     note: 'One-time payment',
     button: 'Select Service',
@@ -47,7 +49,7 @@ const onlineServices = [
     iconColor: '#10B981',
     iconBg: '#D1FAE5',
     time: '15-20 minutes',
-    price: '$35',
+    price: '₱1500',
     suffix: '/ session',
     note: 'One-time payment',
     badge: 'Most Popular',
@@ -61,7 +63,7 @@ const onlineServices = [
     iconBg: '#DFF4FF',
     buttonColor: '#0EA5E9',
     time: '20-30 minutes',
-    price: '$45',
+    price: '₱2000',
     suffix: '/ session',
     note: 'One-time payment',
     badge: 'Recommended',
@@ -343,9 +345,17 @@ function Tag({ label, purple }) {
 }
 
 export default function VideoConsultScreen({ navigation }) {
-  const [selectedMode, setSelectedMode] = useState('pay-per-use');
+  const isMockUser = !currentUser;
+  const [selectedMode, setSelectedMode] = useState(isMockUser ? 'subscriber' : 'pay-per-use');
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('All');
+
+  // Determine the user's status from their profile data instead of a manual toggle.
+  // This makes the pricing dynamic and accurate for the logged-in user.
+  // For mock user, we use the demo toggle.
+  const isSubscriber = isMockUser ? selectedMode === 'subscriber' : (currentUser?.isSubscriber || false);
+  // A user is a PhilHealth member if they have a number associated with their profile.
+  const isPhilHealthMember = isMockUser ? selectedMode === 'philhealth' : (!!currentUser?.philHealthNumber);
 
   const filteredServices = useMemo(() => {
     const normalizedQuery = searchQuery.trim().toLowerCase();
@@ -403,36 +413,38 @@ export default function VideoConsultScreen({ navigation }) {
           </Text>
         </View>
 
-        <View style={styles.demoBox}>
-          <Text style={styles.demoTitle}>Demo: Select User Type</Text>
-          <Text style={styles.demoSubtitle}>See how pricing adapts to different user statuses</Text>
+        {isMockUser && (
+          <View style={styles.demoBox}>
+            <Text style={styles.demoTitle}>Demo: Select User Type</Text>
+            <Text style={styles.demoSubtitle}>See how pricing adapts to different user statuses</Text>
 
-          <View style={styles.modeRow}>
-            <ModePill
-              icon="diamond-outline"
-              label="Subscriber"
-              active={selectedMode === 'subscriber'}
-              activeColor="#F59E0B"
-              onPress={() => setSelectedMode('subscriber')}
-            />
+            <View style={styles.modeRow}>
+              <ModePill
+                icon="diamond-outline"
+                label="Subscriber"
+                active={selectedMode === 'subscriber'}
+                activeColor="#F59E0B"
+                onPress={() => setSelectedMode('subscriber')}
+              />
+
+              <ModePill
+                icon="shield-outline"
+                label="PhilHealth"
+                active={selectedMode === 'philhealth'}
+                activeColor="#16A34A"
+                onPress={() => setSelectedMode('philhealth')}
+              />
+            </View>
 
             <ModePill
-              icon="shield-outline"
-              label="PhilHealth"
-              active={selectedMode === 'philhealth'}
-              activeColor="#16A34A"
-              onPress={() => setSelectedMode('philhealth')}
+              icon="card-outline"
+              label="Pay-per-use"
+              active={selectedMode === 'pay-per-use'}
+              activeColor="#089FB4"
+              onPress={() => setSelectedMode('pay-per-use')}
             />
           </View>
-
-          <ModePill
-            icon="card-outline"
-            label="Pay-per-use"
-            active={selectedMode === 'pay-per-use'}
-            activeColor="#089FB4"
-            onPress={() => setSelectedMode('pay-per-use')}
-          />
-        </View>
+        )}
 
         <ServiceSearchBar
           value={searchQuery}
@@ -453,7 +465,7 @@ export default function VideoConsultScreen({ navigation }) {
 
             {visibleOnlineServices.map((service) => {
               let displayService = { ...service };
-              if (selectedMode === 'subscriber') {
+              if (isSubscriber) {
                 if (service.title === 'Chat Consultation') {
                   displayService.price = 'Premium Plan';
                   displayService.priceIcon = 'crown';
@@ -479,7 +491,7 @@ export default function VideoConsultScreen({ navigation }) {
                   displayService.suffixStyle = { color: '#D97706', fontWeight: '700', marginBottom: 5 };
                   displayService.noteStyle = { color: '#0F172A', fontWeight: '600' };
                 }
-              } else if (selectedMode === 'philhealth') {
+              } else if (isPhilHealthMember) {
                 if (['Chat Consultation', 'Voice Consultation', 'Video Consultation'].includes(service.title)) {
                   displayService.price = 'PhilHealth Covered';
                   displayService.suffix = 'Free Consultation';
@@ -565,7 +577,7 @@ export default function VideoConsultScreen({ navigation }) {
                 ))}
               </View>
 
-              {selectedMode === 'subscriber' ? (
+              {isSubscriber ? (
                 <>
                   <View style={styles.priceRow}>
                     <MaterialCommunityIcons name="crown" size={24} color="#F59E0B" style={{marginRight: 4, marginBottom: 2}} />
@@ -574,7 +586,7 @@ export default function VideoConsultScreen({ navigation }) {
                   </View>
                   <Text style={[styles.priceNote, { color: '#0F172A', fontWeight: '600' }]}>Exclusive pricing for subscribers</Text>
                 </>
-              ) : selectedMode === 'philhealth' ? (
+              ) : isPhilHealthMember ? (
                 <>
                   <View style={styles.priceRow}>
                     <Text style={[styles.priceText, { fontSize: 22, color: '#16A34A' }]}>PhilHealth</Text>
@@ -586,7 +598,7 @@ export default function VideoConsultScreen({ navigation }) {
                 <>
                   <View style={styles.priceRow}>
                     <Text style={styles.pricePrefix}>From </Text>
-                    <Text style={styles.priceText}>$75</Text>
+                    <Text style={styles.priceText}>₱2500</Text>
                   </View>
                   <Text style={styles.priceNote}>Varies by specialty</Text>
                 </>
@@ -666,7 +678,7 @@ export default function VideoConsultScreen({ navigation }) {
             Need help choosing? Our care coordinators are available 24/7
           </Text>
 
-          <TouchableOpacity style={styles.helpButton}>
+          <TouchableOpacity style={styles.helpButton} onPress={() => navigation.navigate('Messages', { doctorName: 'Care Team' })}>
             <Ionicons name="call-outline" size={16} color="#0284A8" />
             <Text style={styles.helpButtonText}>Talk to Care Team</Text>
           </TouchableOpacity>

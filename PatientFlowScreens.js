@@ -11,6 +11,7 @@ import {
   Modal,
   Image,
   Alert,
+  Linking,
   KeyboardAvoidingView,
   Animated,
   SafeAreaView,
@@ -22,6 +23,7 @@ import { Ionicons, MaterialCommunityIcons, Feather, FontAwesome5 } from '@expo/v
 import Svg, { Circle, Rect } from 'react-native-svg';
 import * as ImagePicker from 'expo-image-picker';
 import DateTimePicker from '@react-native-community/datetimepicker';
+import * as DocumentPicker from 'expo-document-picker';
 
 import { API_URL, currentUser, setCurrentUser } from './config';
 
@@ -177,7 +179,7 @@ function AnimatedBodyPart({ part, isSelected, onPress }) {
 
 export function AppointmentsScreen({ navigation, route }) {
   const [selected, setSelected] = useState('Upcoming');
-  const isMockUser = !currentUser; // Use mock data only if no user is logged in
+  const isMockUser = !currentUser || currentUser?.id === 'mock-user-123'; // Use mock data if no user is logged in, or if it's the mock user
 
   const [upcomingAppointments, setUpcomingAppointments] = useState(isMockUser ? [
     {
@@ -370,7 +372,7 @@ export function PrescriptionsScreen({ navigation }) {
   const [renewalMed, setRenewalMed] = useState(null);
   const [preferredPharmacy, setPreferredPharmacy] = useState('');
   const [renewalNotes, setRenewalNotes] = useState('');
-  const isMockUser = !currentUser; // Use mock data only if no user is logged in
+  const isMockUser = !currentUser || currentUser?.id === 'mock-user-123'; // Use mock data if no user is logged in, or if it's the mock user
 
   const [prescriptions, setPrescriptions] = useState(isMockUser ? [
     {
@@ -477,27 +479,6 @@ export function PrescriptionsScreen({ navigation }) {
         <Text style={[styles.sectionHeader, { marginTop: 0, marginBottom: 0, paddingHorizontal: 0 }]}>Active Medications</Text>
       </View>
 
-      {/* Refill Reminder */}
-      <Card style={[styles.warningBorder, { flexDirection: 'row', alignItems: 'center', paddingVertical: 14 }]}>
-        <View style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: '#FFFBEB', alignItems: 'center', justifyContent: 'center', marginRight: 12 }}>
-          <Ionicons name="alert" size={20} color="#F59E0B" />
-        </View>
-        <View style={{ flex: 1, marginRight: 8 }}>
-          <Text style={{ color: ink, fontSize: 15, fontWeight: '800', marginBottom: 2 }}>Refill Reminder</Text>
-          <Text style={{ color: muted, fontSize: 12, lineHeight: 16 }}>Atorvastatin requires a new prescription soon.</Text>
-        </View>
-        <TouchableOpacity 
-          style={{ backgroundColor: '#F59E0B', paddingHorizontal: 12, paddingVertical: 8, borderRadius: 8 }}
-          onPress={() => {
-            setRenewalMed({ name: 'Atorvastatin', prescriber: 'Dr. Sarah Johnson' });
-            setShowRenewalModal(true);
-          }}
-          onPress={() => {}}
-        >
-          <Text style={{ color: '#FFFFFF', fontSize: 12, fontWeight: '800' }}>Refill Now</Text>
-        </TouchableOpacity>
-      </Card>
-
       {/* Active Medication Cards */}
       {activeMeds.map((med) => (
         <Card key={med.name}>
@@ -541,7 +522,10 @@ export function PrescriptionsScreen({ navigation }) {
             </View>
             <TouchableOpacity 
               style={[styles.outlineButton, { flex: 0, paddingHorizontal: 16, backgroundColor: med.color === '#EF4444' ? '#EF4444' : cyan, borderColor: med.color === '#EF4444' ? '#EF4444' : cyan }]}
-              onPress={() => {}}
+              onPress={() => {
+                setRenewalMed({ name: med.name, prescriber: med.prescriber });
+                setShowRenewalModal(true);
+              }}
             >
               <Text style={[styles.outlineButtonText, { color: '#FFFFFF' }]}>
                 {med.daysRemaining === 0 ? 'Request Renewal' : 'Refill Now'}
@@ -612,7 +596,7 @@ export function PrescriptionsScreen({ navigation }) {
             <Text style={styles.bodyText}>Set up automated reminders to never miss a dose</Text>
           </View>
         </View>
-        <PrimaryButton label="Configure Reminders" icon="add" onPress={() => {}} />
+        <PrimaryButton label="Configure Reminders" icon="add" onPress={() => setShowReminderModal(true)} />
       </Card>
       </Screen>
 
@@ -799,6 +783,32 @@ export function AuthScreen({ navigation }) {
     );
   };
 
+  const handleBiometricLogin = () => {
+    // In a real app, this would use Expo's LocalAuthentication API.
+    // For this mock, we'll simulate a successful login and set a mock user.
+    const mockUser = {
+      id: 'mock-user-123',
+      firstName: 'Sarah',
+      lastName: 'Williams',
+      email: 'sarah.williams@mock.com',
+      phone: '+63 912-345-6789',
+      dob: '12/05/1990',
+      gender: 'Female',
+      address: 'Oklahoma City, OK',
+      bloodType: 'O+',
+      allergies: 'Penicillin, Peanuts',
+      emergencyName: 'John Williams',
+      emergencyPhone: '+63 998-765-4321',
+      emergencyEmail: 'john.williams@example.com',
+      emergencyRelationship: 'Spouse',
+      profileImage: null,
+      isSubscriber: true,
+      isVerified: true,
+    };
+    setCurrentUser(mockUser);
+    navigation.navigate('MainTabs');
+  };
+
   return (
     <SafeAreaView style={[styles.safeArea, styles.authWrapper]}>
       <StatusBar barStyle="dark-content" backgroundColor={bg} />
@@ -842,7 +852,7 @@ export function AuthScreen({ navigation }) {
               onPress={handleLogin}
             />
 
-            <TouchableOpacity style={{ alignItems: 'center', marginVertical: 24 }} onPress={() => navigation.navigate('MainTabs')}>
+            <TouchableOpacity style={{ alignItems: 'center', marginVertical: 24 }} onPress={handleBiometricLogin}>
               <Ionicons name="finger-print-outline" size={36} color={cyan} />
               <Text style={{ color: muted, fontSize: 11, marginTop: 4, fontWeight: '600' }}>Biometric Login</Text>
             </TouchableOpacity>
@@ -2155,23 +2165,25 @@ export function EditProfileScreen({ navigation, route }) {
   const isSaving = useRef(false);
   const currentProfile = route?.params?.currentProfile || {};
 
-  const [profileImage, setProfileImage] = useState(currentProfile.profileImage || null);
-  const [gender, setGender] = useState(currentProfile.gender || 'Female');
-  const [bloodType, setBloodType] = useState(currentProfile.bloodType || 'O+');
+  const getInitialValue = (value) => (value && value !== 'Not provided' ? value : '');
+
+  const [profileImage, setProfileImage] = useState(currentProfile?.profileImage || null);
+  const [gender, setGender] = useState(currentProfile.gender !== 'Not provided' ? currentProfile.gender : 'Female');
+  const [bloodType, setBloodType] = useState(currentProfile.bloodType !== 'Not provided' ? currentProfile.bloodType : 'O+');
   const [showBloodTypeDropdown, setShowBloodTypeDropdown] = useState(false);
   const relationshipOptions = ['Mother', 'Father', 'Spouse', 'Other'];
-  const initialRel = currentProfile.emergencyRelationship || 'Spouse';
+  const initialRel = currentProfile.emergencyRelationship !== 'Not provided' ? currentProfile.emergencyRelationship : 'Spouse';
   const [emergencyRelationship, setEmergencyRelationship] = useState(relationshipOptions.includes(initialRel) ? initialRel : 'Other');
   const [otherRelationship, setOtherRelationship] = useState(relationshipOptions.includes(initialRel) ? '' : initialRel);
-  const [emergencyEmail, setEmergencyEmail] = useState(currentProfile.emergencyEmail && !['Not provided', 'none@example.com', 'john.williams@example.com'].includes(currentProfile.emergencyEmail) ? currentProfile.emergencyEmail : '');
-  const [phone, setPhone] = useState(formatPhoneNumber(currentProfile.phone && !['Not provided', '+63 000-000-0000', '+63 912-345-6789'].includes(currentProfile.phone) ? currentProfile.phone : ''));
-  const [firstName, setFirstName] = useState(currentProfile.firstName && !['Not provided', 'Sarah'].includes(currentProfile.firstName) ? currentProfile.firstName : '');
-  const [lastName, setLastName] = useState(currentProfile.lastName && !['Not provided', 'Williams'].includes(currentProfile.lastName) ? currentProfile.lastName : '');
-  const [address, setAddress] = useState(currentProfile.address && !['Not provided', 'Oklahoma City, OK'].includes(currentProfile.address) ? currentProfile.address : '');
-  const [email, setEmail] = useState(currentProfile.email && !['Not provided', 'sarah@example.com'].includes(currentProfile.email) ? currentProfile.email : '');
-  const [allergies, setAllergies] = useState(currentProfile.allergies && !['Not provided', 'None', 'Penicillin, Peanuts'].includes(currentProfile.allergies) ? currentProfile.allergies : '');
-  const [emergencyName, setEmergencyName] = useState(currentProfile.emergencyName && !['Not provided', 'John Williams'].includes(currentProfile.emergencyName) ? currentProfile.emergencyName : '');
-  const [emergencyPhone, setEmergencyPhone] = useState(formatPhoneNumber(currentProfile.emergencyPhone && !['Not provided', '+63 000-000-0000', '+63 998-765-4321'].includes(currentProfile.emergencyPhone) ? currentProfile.emergencyPhone : ''));
+  const [emergencyEmail, setEmergencyEmail] = useState(getInitialValue(currentProfile.emergencyEmail));
+  const [phone, setPhone] = useState(formatPhoneNumber(getInitialValue(currentProfile.phone)));
+  const [firstName, setFirstName] = useState(getInitialValue(currentProfile.firstName));
+  const [lastName, setLastName] = useState(getInitialValue(currentProfile.lastName));
+  const [address, setAddress] = useState(getInitialValue(currentProfile.address));
+  const [email, setEmail] = useState(getInitialValue(currentProfile.email));
+  const [allergies, setAllergies] = useState(getInitialValue(currentProfile.allergies));
+  const [emergencyName, setEmergencyName] = useState(getInitialValue(currentProfile.emergencyName));
+  const [emergencyPhone, setEmergencyPhone] = useState(formatPhoneNumber(getInitialValue(currentProfile.emergencyPhone)));
   const [currentPassword, setCurrentPassword] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -2395,6 +2407,14 @@ export function EditProfileScreen({ navigation, route }) {
 
 export function ProfileScreen({ navigation, route }) {
   const [useBiometrics, setUseBiometrics] = useState(true);
+  const [healthJourneyStats, setHealthJourneyStats] = useState({
+    appointments: 0,
+    prescriptions: 0,
+    ptSessions: 0,
+  });
+
+  // Use mock data only if no user is logged in
+  const isMockUser = !currentUser || currentUser?.id === 'mock-user-123';
 
   const [profileData, setProfileData] = useState({
     id: currentUser?.id,
@@ -2412,6 +2432,8 @@ export function ProfileScreen({ navigation, route }) {
     emergencyEmail: currentUser?.emergencyEmail || 'john.williams@example.com',
     emergencyRelationship: currentUser?.emergencyRelationship || 'Spouse',
     profileImage: currentUser?.profileImage || null,
+    isSubscriber: currentUser?.isSubscriber || (isMockUser ? true : false),
+    isVerified: currentUser?.isVerified || (isMockUser ? true : false),
   });
 
   useEffect(() => {
@@ -2441,11 +2463,54 @@ export function ProfileScreen({ navigation, route }) {
           emergencyEmail: currentUser.emergencyEmail || 'john.williams@example.com',
           emergencyRelationship: currentUser.emergencyRelationship || 'Spouse',
           profileImage: currentUser.profileImage || null,
+          isSubscriber: currentUser.isSubscriber || false,
+          isVerified: currentUser.isVerified || false,
         }));
       }
     });
     return unsubscribe;
   }, [navigation]);
+
+  useEffect(() => {
+    const loadStats = () => {
+      if (isMockUser) {
+        setHealthJourneyStats({ appointments: 12, prescriptions: 5, ptSessions: 3 });
+        return;
+      }
+
+      if (currentUser?.id) {
+        // Reset stats before fetching
+        setHealthJourneyStats({ appointments: 0, prescriptions: 0, ptSessions: 0 });
+
+        // Fetch appointments
+        fetch(`${API_URL}/appointment?user=${currentUser.id}`)
+          .then(res => res.ok ? res.json() : Promise.resolve([]))
+          .then(data => {
+            if (data && Array.isArray(data) && data.length > 0) {
+              const ptSessions = data.filter(appt => appt.type?.toLowerCase().includes('therapy')).length;
+              const regularAppointments = data.length - ptSessions;
+              setHealthJourneyStats(prev => ({ ...prev, appointments: regularAppointments, ptSessions: ptSessions }));
+            }
+          })
+          .catch(err => console.error('Error fetching appointment stats:', err));
+
+        // Fetch prescriptions
+        fetch(`${API_URL}/prescription?user=${currentUser.id}`)
+          .then(res => res.ok ? res.json() : Promise.resolve([]))
+          .then(data => {
+            if (data && Array.isArray(data) && data.length > 0) {
+              setHealthJourneyStats(prev => ({ ...prev, prescriptions: data.length }));
+            }
+          })
+          .catch(err => console.error('Error fetching prescription stats:', err));
+      }
+    };
+
+    const unsubscribe = navigation.addListener('focus', loadStats);
+    loadStats(); // Initial load
+
+    return unsubscribe;
+  }, [navigation, currentUser?.id, isMockUser]);
 
   const accountLinks = [
     { icon: 'person-outline', title: 'Personal Information', route: 'EditProfile' },
@@ -2475,8 +2540,8 @@ export function ProfileScreen({ navigation, route }) {
         <Text style={styles.largeTitle}>{profileData.firstName} {profileData.lastName}</Text>
         <Text style={styles.bodyText}>Patient ID OKD-10482</Text>
         <View style={styles.tagRow}>
-          <Pill label="Subscriber" color="#F59E0B" />
-          <Pill label="Verified" color="#10B981" />
+          {profileData.isSubscriber && <Pill label="Subscriber" color="#F59E0B" />}
+          {profileData.isVerified && <Pill label="Verified" color="#10B981" />}
         </View>
         <View style={{ width: '100%', marginTop: 10 }}>
           <PrimaryButton label="Edit Profile" icon="create-outline" onPress={() => navigation.navigate('EditProfile', { currentProfile: profileData })} />
@@ -2543,17 +2608,17 @@ export function ProfileScreen({ navigation, route }) {
       <Card style={{ padding: 0, overflow: 'hidden' }}>
         <View style={styles.linkRow}>
           <View style={styles.linkIconBg}><Ionicons name="calendar-outline" size={18} color={cyan} /></View>
-          <Text style={styles.linkText}>12 Appointments</Text>
+          <Text style={styles.linkText}>{healthJourneyStats.appointments} Appointments</Text>
         </View>
         <View style={styles.linkDivider} />
         <View style={styles.linkRow}>
           <View style={styles.linkIconBg}><Ionicons name="document-text-outline" size={18} color={cyan} /></View>
-          <Text style={styles.linkText}>5 Prescriptions</Text>
+          <Text style={styles.linkText}>{healthJourneyStats.prescriptions} Prescriptions</Text>
         </View>
         <View style={styles.linkDivider} />
         <View style={styles.linkRow}>
           <View style={styles.linkIconBg}><Ionicons name="fitness-outline" size={18} color={cyan} /></View>
-          <Text style={styles.linkText}>3 PT Sessions</Text>
+          <Text style={styles.linkText}>{healthJourneyStats.ptSessions} PT Sessions</Text>
         </View>
       </Card>
 
@@ -2561,7 +2626,7 @@ export function ProfileScreen({ navigation, route }) {
       <Card style={{ padding: 0, overflow: 'hidden' }}>
         {accountLinks.map((link, index) => (
           <React.Fragment key={link.title}>
-            <TouchableOpacity style={styles.linkRow} onPress={() => link.route && navigation.navigate(link.route)}>
+            <TouchableOpacity style={styles.linkRow} onPress={link.route ? () => navigation.navigate(link.route, { currentProfile: profileData }) : link.onPress} activeOpacity={link.route || link.onPress ? 0.2 : 1.0}>
               <View style={styles.linkIconBg}><Ionicons name={link.icon} size={18} color={cyan} /></View>
               <Text style={styles.linkText}>{link.title}</Text>
               <Ionicons name="chevron-forward" size={18} color="#CBD5E1" />
@@ -2575,7 +2640,7 @@ export function ProfileScreen({ navigation, route }) {
       <Card style={{ padding: 0, overflow: 'hidden' }}>
         {preferenceLinks.map((link, index) => (
           <React.Fragment key={link.title}>
-            <TouchableOpacity style={styles.linkRow}>
+            <TouchableOpacity style={styles.linkRow} onPress={link.onPress} activeOpacity={link.onPress ? 0.2 : 1.0}>
               <View style={styles.linkIconBg}><Ionicons name={link.icon} size={18} color={cyan} /></View>
               <Text style={styles.linkText}>{link.title}</Text>
               <Ionicons name="chevron-forward" size={18} color="#CBD5E1" />
@@ -2587,8 +2652,12 @@ export function ProfileScreen({ navigation, route }) {
           <View style={styles.linkIconBg}><Ionicons name="finger-print-outline" size={18} color={cyan} /></View>
           <Text style={styles.linkText}>Use Biometric Login</Text>
           <Switch 
-            value={useBiometrics} 
-            onValueChange={setUseBiometrics} 
+            value={useBiometrics}
+            onValueChange={(value) => {
+              setUseBiometrics(value);
+              Alert.alert('Biometrics', `Biometric login has been ${value ? 'enabled' : 'disabled'}.
+In a real app, this would securely store credentials for future use.`);
+            }}
             trackColor={{ false: '#CBD5E1', true: '#BDEAF0' }}
             thumbColor={useBiometrics ? cyan : '#FFFFFF'}
           />
@@ -2696,12 +2765,12 @@ export function BookSpecialistScreen({ navigation, route }) {
   const [showFullScreenImage, setShowFullScreenImage] = useState(false);
 
   const doctors = [
-    { id: '1', name: 'Dr. Sofia Lim', status: 'Available', specialty: 'Cardiologist', clinic: 'OkieDoc+ Heart Center', location: 'BGC, Taguig City', exp: '20 years experience', price: 'From $75', hmo: true, ph: true, initial: 'SL' },
-    { id: '2', name: 'Dr. Carlos Torres', status: 'Available', specialty: 'Dermatologist', clinic: 'OkieDoc+ Skin Clinic', location: 'Ortigas, Pasig City', exp: '10 years experience', price: 'From $65', hmo: true, ph: false, initial: 'CT' },
-    { id: '3', name: 'Dr. Anna Cruz', status: 'Available', specialty: 'Psychiatrist', clinic: 'OkieDoc+ Mental Health Center', location: 'Manila', exp: '18 years experience', price: 'From $85', hmo: true, ph: true, initial: 'AC' },
-    { id: '4', name: 'Dr. Miguel Garcia', status: 'Available', specialty: 'Orthopedic Surgeon', clinic: 'OkieDoc+ Orthopedic Center', location: 'Makati City', exp: '22 years experience', price: 'From $95', hmo: true, ph: true, initial: 'MG' },
-    { id: '5', name: 'Dr. Isabel Reyes', status: 'Unavailable', specialty: 'Endocrinologist', clinic: 'OkieDoc+ Diabetes Center', location: 'Quezon City', exp: '15 years experience', price: 'From $80', hmo: false, ph: true, initial: 'IR' },
-    { id: '6', name: 'Dr. Ramon Santos', status: 'Available', specialty: 'Gastroenterologist', clinic: 'OkieDoc+ Digestive Health Center', location: 'Makati City', exp: '25 years experience', price: 'From $90', hmo: true, ph: true, initial: 'RS' },
+    { id: '1', name: 'Dr. Sofia Lim', status: 'Available', specialty: 'Cardiologist', clinic: 'OkieDoc+ Heart Center', location: 'BGC, Taguig City', exp: '20 years experience', price: 'From ₱3000', hmo: true, ph: true, initial: 'SL' },
+    { id: '2', name: 'Dr. Carlos Torres', status: 'Available', specialty: 'Dermatologist', clinic: 'OkieDoc+ Skin Clinic', location: 'Ortigas, Pasig City', exp: '10 years experience', price: 'From ₱2500', hmo: true, ph: false, initial: 'CT' },
+    { id: '3', name: 'Dr. Anna Cruz', status: 'Available', specialty: 'Psychiatrist', clinic: 'OkieDoc+ Mental Health Center', location: 'Manila', exp: '18 years experience', price: 'From ₱3500', hmo: true, ph: true, initial: 'AC' },
+    { id: '4', name: 'Dr. Miguel Garcia', status: 'Available', specialty: 'Orthopedic Surgeon', clinic: 'OkieDoc+ Orthopedic Center', location: 'Makati City', exp: '22 years experience', price: 'From ₱4000', hmo: true, ph: true, initial: 'MG' },
+    { id: '5', name: 'Dr. Isabel Reyes', status: 'Unavailable', specialty: 'Endocrinologist', clinic: 'OkieDoc+ Diabetes Center', location: 'Quezon City', exp: '15 years experience', price: 'From ₱3200', hmo: false, ph: true, initial: 'IR' },
+    { id: '6', name: 'Dr. Ramon Santos', status: 'Available', specialty: 'Gastroenterologist', clinic: 'OkieDoc+ Digestive Health Center', location: 'Makati City', exp: '25 years experience', price: 'From ₱3800', hmo: true, ph: true, initial: 'RS' },
   ];
 
   useEffect(() => {
@@ -3990,10 +4059,23 @@ export function BookTherapyScreen({ navigation, route }) {
   );
 }
 
+const calculateAge = (dob) => {
+  if (!dob || !/^\d{2}\/\d{2}\/\d{4}$/.test(dob)) return '';
+  const [month, day, year] = dob.split('/');
+  const birthDate = new Date(`${year}-${month}-${day}`);
+  const today = new Date();
+  let age = today.getFullYear() - birthDate.getFullYear();
+  const m = today.getMonth() - birthDate.getMonth();
+  if (m < 0 || (m === 0 && today.getDate() < birthDate.getDate())) {
+      age--;
+  }
+  return age.toString();
+};
+
 export function BookPhysicalScreen({ navigation }) {
   const [step, setStep] = useState(0);
-  const totalSteps = 6;
-  const stepLabels = ['Doctor', 'Facility', 'Date & Time', 'Patient Info', 'Details', 'Review'];
+  const totalSteps = 5;
+  const stepLabels = ['Doctor', 'Facility', 'Date & Time', 'Details', 'Review'];
   
   // Step 1: Doctor
   const [searchQuery, setSearchQuery] = useState('');
@@ -4020,18 +4102,34 @@ export function BookPhysicalScreen({ navigation }) {
   const availableTimes = ['09:00 AM', '10:00 AM', '11:00 AM', '01:00 PM', '02:00 PM', '03:30 PM', '04:00 PM'];
 
   // Step 4: Patient Info
-  const [fullName, setFullName] = useState('');
-  const [age, setAge] = useState('');
-  const [gender, setGender] = useState('Male');
-  const [contactNumber, setContactNumber] = useState('');
+  const [fullName, setFullName] = useState(currentUser ? `${currentUser.firstName} ${currentUser.lastName}`.replace('Not provided', '').trim() : '');
+  const [age, setAge] = useState(currentUser ? calculateAge(currentUser.dob) : '');
+  const [gender, setGender] = useState(currentUser?.gender !== 'Not provided' ? currentUser.gender : 'Male');
+  const [contactNumber, setContactNumber] = useState(currentUser?.phone !== 'Not provided' ? formatPhoneNumber(currentUser.phone) : '');
 
   // Step 5: Consultation Details
   const [chiefComplaint, setChiefComplaint] = useState('');
   const [selectedSymptoms, setSelectedSymptoms] = useState([]);
   const [notes, setNotes] = useState('');
-
+  
   useEffect(() => {
-    const unsubscribe = navigation.addListener('blur', () => {
+    const onFocus = () => {
+      // Reset patient details from currentUser on focus
+      if (currentUser) {
+        setFullName(`${currentUser.firstName} ${currentUser.lastName}`.replace('Not provided', '').trim());
+        setAge(calculateAge(currentUser.dob));
+        setGender(currentUser.gender !== 'Not provided' ? currentUser.gender : 'Male');
+        setContactNumber(currentUser.phone !== 'Not provided' ? formatPhoneNumber(currentUser.phone) : '');
+      } else {
+        // Handle case where user logs out
+        setFullName('');
+        setAge('');
+        setGender('Male');
+        setContactNumber('');
+      }
+    };
+
+    const onBlur = () => {
       setStep(0);
       setSearchQuery('');
       setSelectedDoctor(null);
@@ -4041,24 +4139,27 @@ export function BookPhysicalScreen({ navigation }) {
       setViewDate(new Date());
       setShowMonthYearPicker(false);
       setPickerYear(new Date().getFullYear());
-      setFullName('');
-      setAge('');
-      setGender('Male');
-      setContactNumber('');
       setChiefComplaint('');
       setSelectedSymptoms([]);
       setNotes('');
-    });
+    };
 
-    return unsubscribe;
+    const focusSubscription = navigation.addListener('focus', onFocus);
+    const blurSubscription = navigation.addListener('blur', onBlur);
+    
+    onFocus(); // Initial load
+
+    return () => {
+      focusSubscription();
+      blurSubscription();
+    };
   }, [navigation]);
 
   const isNextDisabled = 
     (step === 0 && !selectedDoctor) ||
     (step === 1 && !selectedFacility) ||
     (step === 2 && (!selectedDate || !selectedTime)) ||
-    (step === 3 && (!fullName.trim() || !age.trim() || !contactNumber.trim())) ||
-    (step === 4 && !chiefComplaint.trim());
+    (step === 3 && !chiefComplaint.trim());
 
   const toggleSymptom = (sym) => {
     if (selectedSymptoms.includes(sym)) {
@@ -4324,40 +4425,8 @@ export function BookPhysicalScreen({ navigation }) {
           </>
         )}
 
-        {/* STEP 4: PATIENT INFO */}
+        {/* STEP 4: DETAILS (was STEP 5) */}
         {step === 3 && (
-          <>
-            <Text style={styles.sectionHeader}>Patient Details</Text>
-            <Text style={[styles.bodyText, {marginBottom: 16, marginTop: -4, paddingHorizontal: 4}]}>Auto-filled from your profile</Text>
-            <Card>
-              <View style={styles.inputGroup}>
-                <Text style={styles.inputLabel}>Full name *</Text>
-                <TextInput style={styles.textInput} placeholder="Enter full name" placeholderTextColor="#94A3B8" value={fullName} onChangeText={setFullName} />
-              </View>
-              <View style={styles.inputGroup}>
-                <Text style={styles.inputLabel}>Age *</Text>
-                <TextInput style={styles.textInput} placeholder="Enter age" placeholderTextColor="#94A3B8" keyboardType="numeric" value={age} onChangeText={setAge} />
-              </View>
-              <View style={styles.inputGroup}>
-                <Text style={styles.inputLabel}>Gender *</Text>
-                <View style={{ flexDirection: 'row', gap: 8 }}>
-                  {['Male', 'Female', 'Other'].map(g => (
-                    <TouchableOpacity key={g} style={{ flex: 1, height: 44, borderRadius: 8, borderWidth: 1, borderColor: gender === g ? cyan : '#CBD5E1', backgroundColor: gender === g ? '#E8F6FA' : '#FFFFFF', alignItems: 'center', justifyContent: 'center' }} onPress={() => setGender(g)}>
-                      <Text style={{ color: gender === g ? cyan : ink, fontWeight: '700', fontSize: 13 }}>{g}</Text>
-                    </TouchableOpacity>
-                  ))}
-                </View>
-              </View>
-              <View style={[styles.inputGroup, { marginBottom: 0 }]}>
-                <Text style={styles.inputLabel}>Contact Number *</Text>
-                <TextInput style={styles.textInput} placeholder="+63 XXX XXX XXXX" placeholderTextColor="#94A3B8" keyboardType="phone-pad" value={contactNumber} onChangeText={setContactNumber} />
-              </View>
-            </Card>
-          </>
-        )}
-
-        {/* STEP 5: DETAILS */}
-        {step === 4 && (
           <>
             <Text style={styles.sectionHeader}>Consultation Details</Text>
             <Card>
@@ -4401,8 +4470,8 @@ export function BookPhysicalScreen({ navigation }) {
           </>
         )}
 
-        {/* STEP 6: REVIEW */}
-        {step === 5 && (
+        {/* STEP 5: REVIEW (was STEP 6) */}
+        {step === 4 && (
           <>
             <Text style={styles.sectionHeader}>Review Your Appointment</Text>
             <Card>
@@ -4476,7 +4545,7 @@ export function BookPhysicalScreen({ navigation }) {
           <Text style={{ color: ink, fontSize: 14, fontWeight: '700' }}>Back</Text>
         </TouchableOpacity>
         
-        {step < 5 ? (
+        {step < 4 ? (
           <TouchableOpacity 
             style={{ height: 48, paddingHorizontal: 32, borderRadius: 8, backgroundColor: isNextDisabled ? '#CBD5E1' : cyan, alignItems: 'center', justifyContent: 'center' }}
             onPress={() => setStep(step + 1)}
@@ -4509,10 +4578,6 @@ export function BookPhysicalScreen({ navigation }) {
               setViewDate(new Date());
               setShowMonthYearPicker(false);
               setPickerYear(new Date().getFullYear());
-              setFullName('');
-              setAge('');
-              setGender('Male');
-              setContactNumber('');
               setChiefComplaint('');
               setSelectedSymptoms([]);
               setNotes('');
@@ -4735,7 +4800,6 @@ export function ConsultationIntakeScreen({ navigation, route }) {
 
         <View style={{ backgroundColor: '#F0FDF4', padding: 16, borderRadius: 12, borderWidth: 1, borderColor: '#BBF7D0', marginBottom: 24 }}>
           <Text style={{ color: '#166534', fontWeight: '800', fontSize: 15, marginBottom: 8 }}>Important Information</Text>
-          <Text style={{ color: '#15803D', fontSize: 13, marginBottom: 4 }}>• This information is confidential and HIPAA-protected</Text>
           <Text style={{ color: '#15803D', fontSize: 13, marginBottom: 4 }}>• A doctor will review your intake before the consultation</Text>
           <Text style={{ color: '#EF4444', fontSize: 13, fontWeight: '600' }}>• In case of emergency, please call 911 or go to the nearest ER</Text>
         </View>
@@ -4997,7 +5061,67 @@ export function MessagesScreen({ navigation, route }) {
   const activeChatIdRef = useRef(activeChatId);
   const scrollViewRef = useRef(null);
   const [inputText, setInputText] = useState('');
-  const isMockUser = !currentUser; // Use mock data only if no user is logged in
+  const [attachment, setAttachment] = useState(null);
+  const isMockUser = !currentUser || currentUser?.id === 'mock-user-123'; // Use mock data if no user is logged in, or if it's the mock user
+
+  useEffect(() => {
+    activeChatIdRef.current = activeChatId;
+  }, [activeChatId]);
+
+  const pickAttachment = () => {
+    Alert.alert(
+      'Attach a file',
+      'Choose where to select your file from:',
+      [
+        {
+          text: 'Select from Gallery',
+          onPress: async () => {
+            try {
+              const result = await ImagePicker.launchImageLibraryAsync({
+                mediaTypes: ImagePicker.MediaTypeOptions.Images,
+                quality: 0.8,
+              });
+
+              if (!result.canceled) {
+                const asset = result.assets[0];
+                setAttachment({
+                  uri: asset.uri,
+                  name: asset.fileName || `image_${Date.now()}.${asset.uri.split('.').pop()}`,
+                  type: asset.mimeType || `image/${asset.uri.split('.').pop()}`,
+                });
+              }
+            } catch (err) {
+              console.error('Error picking image:', err);
+              Alert.alert('Error', 'Could not select the image.');
+            }
+          },
+        },
+        {
+          text: 'Choose a File',
+          onPress: async () => {
+            try {
+              const result = await DocumentPicker.getDocumentAsync({
+                type: '*/*', // Allow all file types
+              });
+              if (result.canceled === false) {
+                const asset = result.assets[0];
+                setAttachment({
+                  uri: asset.uri,
+                  name: asset.name,
+                  type: asset.mimeType,
+                });
+              }
+            } catch (err) {
+              console.error('Error picking document:', err);
+              Alert.alert('Error', 'Could not pick the file.');
+            }
+          },
+        },
+        { text: 'Cancel', style: 'cancel' },
+      ],
+      { cancelable: true }
+    );
+  };
 
   useEffect(() => {
     activeChatIdRef.current = activeChatId;
@@ -5107,12 +5231,13 @@ export function MessagesScreen({ navigation, route }) {
   ] : []);
 
   const sendMessage = () => {
-    if (!inputText.trim()) return;
+    if (!inputText.trim() && !attachment) return;
     
     const newMessage = {
       id: Date.now().toString(),
       sender: 'You',
       text: inputText,
+      attachment: attachment,
       time: 'Just now'
     };
 
@@ -5125,6 +5250,7 @@ export function MessagesScreen({ navigation, route }) {
       return chat;
     }));
     setInputText('');
+    setAttachment(null);
 
     setTimeout(() => {
       setConversations(prev => prev.map(chat => {
@@ -5234,7 +5360,28 @@ export function MessagesScreen({ navigation, route }) {
                 </View>
               )}
               <View style={[styles.chatBubble, isMine ? styles.chatBubbleMine : styles.chatBubbleOther]}>
-                <Text style={[styles.chatText, isMine ? styles.chatMineText : styles.chatOtherText]}>{msg.text}</Text>
+                {msg.attachment && (
+                  msg.attachment.type?.startsWith('image/') ? (
+                    <Image 
+                      source={{ uri: msg.attachment.uri }} 
+                      style={{ width: 200, height: 200, borderRadius: 10, marginBottom: msg.text ? 8 : 0 }} 
+                      resizeMode="cover" 
+                    />
+                  ) : (
+                    <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: isMine ? 'rgba(255,255,255,0.1)' : '#F1F5F9', padding: 12, borderRadius: 8, marginBottom: msg.text ? 8 : 0 }}>
+                      <Ionicons name="document-attach-outline" size={24} color={isMine ? '#FFFFFF' : ink} style={{ marginRight: 8 }} />
+                      <View>
+                        <Text style={[styles.chatText, isMine ? styles.chatMineText : styles.chatOtherText, { fontWeight: '700' }]} numberOfLines={1}>
+                          {msg.attachment.name}
+                        </Text>
+                        <Text style={[styles.chatTime, isMine ? styles.chatMineTime : styles.chatOtherTime, { marginTop: 2 }]}>
+                          File Attachment
+                        </Text>
+                      </View>
+                    </View>
+                  )
+                )}
+                {!!msg.text && <Text style={[styles.chatText, isMine ? styles.chatMineText : styles.chatOtherText]}>{msg.text}</Text>}
                 <Text style={[styles.chatTime, isMine ? styles.chatMineTime : styles.chatOtherTime]}>{msg.time}</Text>
               </View>
             </View>
@@ -5253,57 +5400,78 @@ export function MessagesScreen({ navigation, route }) {
       </ScrollView>
 
       {/* Message Composer */}
-      <View style={styles.messageComposer}>
-        <TextInput
-          value={inputText}
-          onChangeText={setInputText}
-          style={styles.messageInput}
-          placeholder="Message..."
-          placeholderTextColor="#94A3B8"
-          multiline
-        />
-        <TouchableOpacity style={[styles.sendButton, !inputText.trim() && { backgroundColor: '#CBD5E1' }]} onPress={sendMessage} disabled={!inputText.trim()}>
-          <Ionicons name="send" size={16} color="#FFFFFF" style={{ marginLeft: 2 }} />
-        </TouchableOpacity>
+      <View>
+        {attachment && (
+          <View style={styles.attachmentPreview}>
+            <Ionicons name="document-attach-outline" size={20} color={muted} style={{ marginRight: 8 }} />
+            <Text style={styles.attachmentPreviewText} numberOfLines={1}>{attachment.name}</Text>
+            <TouchableOpacity onPress={() => setAttachment(null)} style={{ padding: 4, marginLeft: 'auto' }}>
+              <Ionicons name="close-circle" size={20} color={muted} />
+            </TouchableOpacity>
+          </View>
+        )}
+        <View style={styles.messageComposer}>
+          <TouchableOpacity style={styles.attachmentButton} onPress={pickAttachment}>
+            <Ionicons name="attach" size={24} color="#64748B" />
+          </TouchableOpacity>
+          <TextInput
+            value={inputText}
+            onChangeText={setInputText}
+            style={styles.messageInput}
+            placeholder="Message..."
+            placeholderTextColor="#94A3B8"
+            multiline
+          />
+          <TouchableOpacity style={[styles.sendButton, !inputText.trim() && !attachment && { backgroundColor: '#CBD5E1' }]} onPress={sendMessage} disabled={!inputText.trim() && !attachment}>
+            <Ionicons name="send" size={16} color="#FFFFFF" style={{ marginLeft: 2 }} />
+          </TouchableOpacity>
+        </View>
       </View>
       </KeyboardAvoidingView>
     </SafeAreaView>
   );
 }
 
-export function CallDoctorScreen({ navigation }) {
+export function CallDoctorScreen({ navigation, route }) {
   return (
     <Screen title="Call Doctor" subtitle="Choose a physician contact option" icon="call-outline" navigation={navigation}>
       <Card style={styles.heroCard}>
         <View style={styles.bigIcon}><Ionicons name="call" size={32} color="#FFFFFF" /></View>
         <Text style={styles.largeTitle}>Speak to a physician</Text>
         <Text style={styles.bodyText}>Connect with an available doctor or schedule a callback from your care team.</Text>
-        <PrimaryButton label="Call Now" icon="call" color="#10B981" />
+        <PrimaryButton label="Call Now" icon="call" color="#10B981" onPress={() => navigation.navigate('JoinVideoCall', { doctorName: 'On-call Physician' })} />
       </Card>
       {['Family Medicine', 'Urgent Care', 'Nurse Triage'].map((title) => (
-        <Card key={title} style={styles.listRow}>
-          <View style={styles.rowIcon}><Ionicons name="call-outline" size={20} color={cyan} /></View>
-          <View style={{ flex: 1 }}>
-            <Text style={styles.cardTitle}>{title}</Text>
-            <Text style={styles.bodyText}>Average wait 5-10 minutes</Text>
-          </View>
-          <Ionicons name="chevron-forward" size={20} color="#CBD5E1" />
-        </Card>
+        <TouchableOpacity key={title} onPress={() => navigation.navigate('JoinVideoCall', { doctorName: title })}>
+          <Card style={styles.listRow}>
+            <View style={styles.rowIcon}><Ionicons name="call-outline" size={20} color={cyan} /></View>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.cardTitle}>{title}</Text>
+              <Text style={styles.bodyText}>Average wait 5-10 minutes</Text>
+            </View>
+            <Ionicons name="chevron-forward" size={20} color="#CBD5E1" />
+          </Card>
+        </TouchableOpacity>
       ))}
     </Screen>
   );
 }
 
-export function JoinVideoCallScreen({ navigation }) {
+export function JoinVideoCallScreen({ navigation, route }) {
   const [muted, setMuted] = useState(false);
   const [cameraOff, setCameraOff] = useState(false);
+  const doctorName = route.params?.doctorName || 'Dr. Sarah Johnson';
 
   return (
-    <Screen title="Video Call" subtitle="Dr. Sarah Johnson" icon="videocam-outline" navigation={navigation}>
+    <Screen title="Video Call" subtitle={doctorName} icon="videocam-outline" navigation={navigation}>
       <View style={styles.videoPreview}>
         <Ionicons name={cameraOff ? 'videocam-off-outline' : 'person-circle-outline'} size={90} color="#BDEAF0" />
         <Text style={styles.videoTitle}>Waiting Room</Text>
-        <Text style={styles.videoSub}>Your doctor will join at 2:30 PM.</Text>
+        <Text style={styles.videoSub}>
+          {doctorName === 'On-call Physician'
+            ? 'Connecting you to the next available doctor...'
+            : `Your doctor will join at 2:30 PM.`}
+        </Text>
       </View>
       <View style={styles.callControls}>
         <TouchableOpacity style={[styles.callControl, muted && styles.callControlActive]} onPress={() => setMuted(!muted)}>
@@ -5324,8 +5492,31 @@ export function JoinVideoCallScreen({ navigation }) {
   );
 }
 
-export function MedicalRecordsScreen({ navigation }) {
-  const [selectedCategory, setSelectedCategory] = useState('Consultation History');
+const mockReferralsData = [
+  { 
+    id: 'r1', 
+    doctor: 'Dr. Maria Santos (General Physician)', 
+    referredTo: 'Dr. Carlos Torres', 
+    specialty: 'Dermatologist', 
+    reason: 'Skin rash on arms', 
+    date: '3/28/2026', 
+    status: 'Booked',
+    apptDate: '4/5/2026',
+    notes: 'Patient needs a follow-up for skin rash.'
+  },
+  { 
+    id: 'r2', 
+    doctor: 'Dr. Sofia Lim (Cardiologist)', 
+    referredTo: 'Dr. Miguel Garcia', 
+    specialty: 'Orthopedic Surgeon', 
+    reason: 'Knee pain after exercise', 
+    date: '2/10/2026', 
+    status: 'Pending' 
+  }
+];
+
+export function MedicalRecordsScreen({ navigation, route }) {
+  const [selectedCategory, setSelectedCategory] = useState(route?.params?.initialCategory || 'Consultation History');
   const [searchQuery, setSearchQuery] = useState('');
   const [showFilter, setShowFilter] = useState(false);
   const [selectedType, setSelectedType] = useState(null);
@@ -5337,8 +5528,8 @@ export function MedicalRecordsScreen({ navigation }) {
     'Treatment Plans',
     'Referrals'
   ];
-  
-  const isMockUser = true; // Enabled for testing with any user account
+
+  const isMockUser = !currentUser || currentUser?.id === 'mock-user-123'; // Use mock data if no user is logged in, or if it's the mock user
 
   const consultationHistory = isMockUser ? [
     {
@@ -5513,28 +5704,50 @@ export function MedicalRecordsScreen({ navigation }) {
     }
   ] : [];
 
-  const referralsList = isMockUser ? [
-    { 
-      id: 'r1', 
-      doctor: 'Dr. Maria Santos (General Physician)', 
-      referredTo: 'Dr. Carlos Torres', 
-      specialty: 'Dermatologist', 
-      reason: 'Skin rash on arms', 
-      date: '3/28/2026', 
-      status: 'Booked',
-      apptDate: '4/5/2026',
-      notes: 'Patient needs a follow-up for skin rash.'
-    },
-    { 
-      id: 'r2', 
-      doctor: 'Dr. Sofia Lim (Cardiologist)', 
-      referredTo: 'Dr. Miguel Garcia', 
-      specialty: 'Orthopedic Surgeon', 
-      reason: 'Knee pain after exercise', 
-      date: '2/10/2026', 
-      status: 'Pending' 
-    }
-  ] : [];
+  const [referralsList, setReferralsList] = useState(isMockUser ? mockReferralsData : []);
+
+  useEffect(() => {
+    const loadData = () => {
+      const isCurrentlyMockUser = !currentUser || currentUser?.id === 'mock-user-123';
+
+      if (!currentUser?.id) {
+        // Clear all data if logged out
+        setReferralsList([]);
+        // ... clear other data lists here
+        return;
+      }
+
+      if (isCurrentlyMockUser) {
+        // Set mock data for mock user
+        setReferralsList(mockReferralsData);
+        // ... set other mock data lists here
+        return;
+      }
+
+      // Fetch referrals when the screen is focused
+      fetch(`${API_URL}/referral?user=${currentUser.id}`)
+        .then(res => res.ok ? res.json() : Promise.resolve([]))
+        .then(data => {
+          if (data && Array.isArray(data)) {
+            setReferralsList(data.sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0)));
+          } else {
+            setReferralsList([]);
+          }
+        })
+        .catch(err => {
+          console.error('Error fetching referrals for Medical Records:', err);
+          setReferralsList([]);
+        });
+      
+      // Note: Fetches for other categories like prescriptions, labs, etc., would go here
+      // to replace their respective mock data when a real user is logged in.
+    };
+
+    const unsubscribe = navigation.addListener('focus', loadData);
+    loadData(); // Initial load
+
+    return unsubscribe;
+  }, [navigation]);
 
   const currentData = (() => {
     const lowerQuery = searchQuery.toLowerCase();
@@ -5710,11 +5923,25 @@ export function MedicalRecordsScreen({ navigation }) {
                 </View>
 
                 <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 4 }}>
-                  {['View Details', 'View Chat', 'Download', 'Email'].map(btn => (
-                    <TouchableOpacity key={btn} style={[styles.outlineButton, { flex: 0, paddingHorizontal: 12, height: 32 }]}>
-                      <Text style={[styles.outlineButtonText, { fontSize: 12 }]}>{btn}</Text>
-                    </TouchableOpacity>
-                  ))}
+                  <TouchableOpacity style={[styles.outlineButton, { flex: 0, paddingHorizontal: 12, height: 32 }]} onPress={() => {
+                    const details = `Type: ${item.type}\nDate: ${item.date} at ${item.time}\nDuration: ${item.duration}\n\nChief Complaint:\n${item.complaint}\n\nStatus: ${item.status}`;
+                    Alert.alert(`Details for Dr. ${item.doctor}`, details);
+                  }}>
+                    <Text style={[styles.outlineButtonText, { fontSize: 12 }]}>View Details</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity style={[styles.outlineButton, { flex: 0, paddingHorizontal: 12, height: 32 }]} onPress={() => navigation.navigate('Messages', { doctorName: item.doctor })}>
+                    <Text style={[styles.outlineButtonText, { fontSize: 12 }]}>View Chat</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity style={[styles.outlineButton, { flex: 0, paddingHorizontal: 12, height: 32 }]} onPress={() => handleDownload('Consultation Summary')}>
+                    <Text style={[styles.outlineButtonText, { fontSize: 12 }]}>Download</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity style={[styles.outlineButton, { flex: 0, paddingHorizontal: 12, height: 32 }]} onPress={() => {
+                    const subject = `Medical Record Summary for ${item.date}`;
+                    const body = `Hello,\n\nPlease find a summary of my consultation on ${item.date} with ${item.doctor}:\n\n- Type: ${item.type}\n- Complaint: ${item.complaint}\n- Status: ${item.status}\n\nThank you.`;
+                    Linking.openURL(`mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`);
+                  }}>
+                    <Text style={[styles.outlineButtonText, { fontSize: 12 }]}>Email</Text>
+                  </TouchableOpacity>
                 </View>
               </Card>
             );
@@ -5740,11 +5967,14 @@ export function MedicalRecordsScreen({ navigation }) {
                   </View>
                 </View>
                 <View style={{ flexDirection: 'row', gap: 8, marginTop: 16 }}>
-                  <TouchableOpacity style={[styles.outlineButton, { flex: 1, flexDirection: 'row' }]}>
+                  <TouchableOpacity style={[styles.outlineButton, { flex: 1, flexDirection: 'row' }]} onPress={() => {
+                    const details = `Prescriber: ${item.doctor}\nIssued On: ${item.issuedOn}\nStatus: ${item.status}\nValid Until: ${item.validUntil}\n\nMedications:\n${item.medications.map(med => `• ${med}`).join('\n')}`;
+                    Alert.alert('Prescription Details', details);
+                  }}>
                     <Ionicons name="eye-outline" size={16} color={cyan} style={{ marginRight: 6 }} />
                     <Text style={styles.outlineButtonText}>View Details</Text>
                   </TouchableOpacity>
-                  <TouchableOpacity style={[styles.outlineButton, { flex: 1, flexDirection: 'row' }]}>
+                  <TouchableOpacity style={[styles.outlineButton, { flex: 1, flexDirection: 'row' }]} onPress={() => handleDownload('Prescription')}>
                     <Ionicons name="download-outline" size={16} color={cyan} style={{ marginRight: 6 }} />
                     <Text style={styles.outlineButtonText}>Download</Text>
                   </TouchableOpacity>
@@ -5766,19 +5996,22 @@ export function MedicalRecordsScreen({ navigation }) {
                   <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 4 }}>
                     <Ionicons name="calendar-outline" size={15} color={muted} />
                     <Text style={styles.metaText}>Request Date: {item.date}</Text>
-                  </View>
+                </View> 
                   <View style={{ flexDirection: 'row', alignItems: 'center' }}>
                     <Ionicons name="location-outline" size={15} color={muted} />
                     <Text style={styles.metaText}>{item.location}</Text>
                   </View>
                 </View>
                 <View style={{ flexDirection: 'row', gap: 8, marginTop: 16 }}>
-                  <TouchableOpacity style={[styles.outlineButton, { flex: 1, flexDirection: 'row' }]}>
+                  <TouchableOpacity style={[styles.outlineButton, { flex: 1, flexDirection: 'row' }]} onPress={() => {
+                    const details = `Requested by: ${item.doctor}\nTest(s): ${item.test}\nDate: ${item.date}\nStatus: ${item.status}\nLocation: ${item.location}`;
+                    Alert.alert('Lab Request Details', details);
+                  }}>
                     <Ionicons name="eye-outline" size={16} color={cyan} style={{ marginRight: 6 }} />
-                    <Text style={styles.outlineButtonText}>View Request</Text>
+                    <Text style={styles.outlineButtonText}>View Details</Text>
                   </TouchableOpacity>
                   {item.status === 'Completed' && (
-                    <TouchableOpacity style={[styles.outlineButton, { flex: 1, flexDirection: 'row' }]}>
+                    <TouchableOpacity style={[styles.outlineButton, { flex: 1, flexDirection: 'row' }]} onPress={() => handleDownload('Lab Results')}>
                       <Ionicons name="download-outline" size={16} color={cyan} style={{ marginRight: 6 }} />
                       <Text style={styles.outlineButtonText}>Download Results</Text>
                     </TouchableOpacity>
@@ -5805,11 +6038,14 @@ export function MedicalRecordsScreen({ navigation }) {
                   </View>
                 </View>
                 <View style={{ flexDirection: 'row', gap: 8, marginTop: 16 }}>
-                  <TouchableOpacity style={[styles.outlineButton, { flex: 1, flexDirection: 'row' }]}>
+                  <TouchableOpacity style={[styles.outlineButton, { flex: 1, flexDirection: 'row' }]} onPress={() => {
+                    const details = `Issued by: ${item.doctor}\nPurpose: ${item.purpose}\nDate: ${item.date}\nDuration: ${item.duration}`;
+                    Alert.alert('Medical Certificate Details', details);
+                  }}>
                     <Ionicons name="eye-outline" size={16} color={cyan} style={{ marginRight: 6 }} />
                     <Text style={styles.outlineButtonText}>View Certificate</Text>
                   </TouchableOpacity>
-                  <TouchableOpacity style={[styles.outlineButton, { flex: 1, flexDirection: 'row' }]}>
+                  <TouchableOpacity style={[styles.outlineButton, { flex: 1, flexDirection: 'row' }]} onPress={() => handleDownload('Medical Certificate')}>
                     <Ionicons name="download-outline" size={16} color={cyan} style={{ marginRight: 6 }} />
                     <Text style={styles.outlineButtonText}>Download PDF</Text>
                   </TouchableOpacity>
@@ -5839,11 +6075,14 @@ export function MedicalRecordsScreen({ navigation }) {
                   </View>
                 </View>
                 <View style={{ flexDirection: 'row', gap: 8, marginTop: 16 }}>
-                  <TouchableOpacity style={[styles.outlineButton, { flex: 1, flexDirection: 'row' }]}>
+                  <TouchableOpacity style={[styles.outlineButton, { flex: 1, flexDirection: 'row' }]} onPress={() => {
+                    const details = `Plan: ${item.plan}\nDoctor: ${item.doctor} (${item.specialty})\nStart Date: ${item.startDate}\nNext Review: ${item.nextReview}\nStatus: ${item.status}`;
+                    Alert.alert('Treatment Plan Details', details);
+                  }}>
                     <Ionicons name="eye-outline" size={16} color={cyan} style={{ marginRight: 6 }} />
                     <Text style={styles.outlineButtonText}>View Plan</Text>
                   </TouchableOpacity>
-                  <TouchableOpacity style={[styles.outlineButton, { flex: 1, flexDirection: 'row' }]}>
+                  <TouchableOpacity style={[styles.outlineButton, { flex: 1, flexDirection: 'row' }]} onPress={() => handleDownload('Prescription')}>
                     <Ionicons name="download-outline" size={16} color={cyan} style={{ marginRight: 6 }} />
                     <Text style={styles.outlineButtonText}>Download</Text>
                   </TouchableOpacity>
@@ -5896,7 +6135,10 @@ export function MedicalRecordsScreen({ navigation }) {
                       <Text style={{ color: '#FFFFFF', fontSize: 13, fontWeight: '700' }}>Book Appointment</Text>
                     </TouchableOpacity>
                   )}
-                  <TouchableOpacity style={[styles.outlineButton, { flex: 1, flexDirection: 'row' }]}>
+                  <TouchableOpacity style={[styles.outlineButton, { flex: 1, flexDirection: 'row' }]} onPress={() => {
+                    const details = `From: ${item.doctor}\nTo: ${item.referredTo} (${item.specialty})\nDate: ${item.date}\nReason: ${item.reason}\nStatus: ${item.status}${item.notes ? `\n\nNotes:\n${item.notes}` : ''}`;
+                    Alert.alert('Referral Details', details);
+                  }}>
                     <Ionicons name="eye-outline" size={16} color={cyan} style={{ marginRight: 6 }} />
                     <Text style={styles.outlineButtonText}>View Referral</Text>
                   </TouchableOpacity>
@@ -5913,8 +6155,8 @@ export function MedicalRecordsScreen({ navigation }) {
 
 export function InvoiceScreen({ navigation }) {
   const items = [
-    ['Medical Certificate', '$350'],
-    ['Medical Clearance', '$450'],
+    ['Medical Certificate', '₱350'],
+    ['Medical Clearance', '₱450'],
   ];
 
   return (
@@ -5932,7 +6174,7 @@ export function InvoiceScreen({ navigation }) {
         <View style={[styles.rowBetween, { alignItems: 'center', marginBottom: 0 }]}>
           <View>
             <Text style={styles.cardTitle}>Total Amount Due</Text>
-            <Text style={styles.totalAmount}>$800</Text>
+            <Text style={styles.totalAmount}>₱800</Text>
           </View>
           <Pill label="Unpaid" color="#F59E0B" />
         </View>
@@ -5949,30 +6191,50 @@ export function InvoiceScreen({ navigation }) {
           ))}
           <View style={styles.invoiceRow}>
             <Text style={styles.bodyText}>Subtotal</Text>
-            <Text style={styles.invoiceAmount}>$800</Text>
+            <Text style={styles.invoiceAmount}>₱800</Text>
           </View>
           <View style={[styles.invoiceRow, { borderBottomWidth: 0, paddingBottom: 0 }]}>
             <Text style={styles.cardTitle}>Amount Due</Text>
-            <Text style={styles.totalAmount}>$800</Text>
+            <Text style={styles.totalAmount}>₱800</Text>
           </View>
         </View>
       </Card>
 
       <Card>
         <Text style={styles.cardTitle}>Actions</Text>
-        <PrimaryButton 
-          label="Pay Now" 
-          icon="card" 
-          color="#F59E0B" 
-          onPress={() => navigation.navigate('PaymentSuccess')} 
+        <PrimaryButton
+          label="Pay Now"
+          icon="card"
+          color="#F59E0B"
+          onPress={() =>
+            Alert.alert(
+              'Confirm Payment',
+              'You are about to pay ₱800. Do you want to proceed?',
+              [
+                { text: 'Cancel', style: 'cancel' },
+                {
+                  text: 'Pay',
+                  onPress: () => navigation.navigate('PaymentSuccess'),
+                },
+              ],
+            )
+          }
         />
-        <TouchableOpacity style={[styles.outlineButton, { marginTop: 12 }]}>
+        <TouchableOpacity style={[styles.outlineButton, { marginTop: 12 }]} onPress={() => handleDownload('invoice')}>
           <Text style={styles.outlineButtonText}>Download Invoice PDF</Text>
         </TouchableOpacity>
       </Card>
     </Screen>
   );
 }
+
+const handleDownload = (docType) => {
+  Alert.alert(
+    'Download Started',
+    `Your ${docType} is being downloaded. You will be notified upon completion.`,
+    [{ text: 'OK' }],
+  );
+};
 
 export function PaymentSuccessScreen({ navigation }) {
   return (
@@ -5987,7 +6249,7 @@ export function PaymentSuccessScreen({ navigation }) {
         <View style={{ width: '100%', marginTop: 24, borderTopWidth: 1, borderTopColor: '#E2E8F0', paddingTop: 12 }}>
           <View style={styles.invoiceRow}>
             <Text style={styles.bodyText}>Amount Paid</Text>
-            <Text style={[styles.invoiceAmount, { color: '#10B981', fontSize: 18 }]}>$800.00</Text>
+            <Text style={[styles.invoiceAmount, { color: '#10B981', fontSize: 18 }]}>₱800.00</Text>
           </View>
           <View style={styles.invoiceRow}>
             <Text style={styles.bodyText}>Receipt Number</Text>
@@ -6006,7 +6268,7 @@ export function PaymentSuccessScreen({ navigation }) {
 
       <View style={{ marginTop: 12 }}>
         <PrimaryButton label="Back to Dashboard" icon="home-outline" onPress={() => navigation.navigate('Dashboard')} /> 
-        <TouchableOpacity style={[styles.outlineButton, { marginTop: 12, flexDirection: 'row' }]}>
+        <TouchableOpacity style={[styles.outlineButton, { marginTop: 12, flexDirection: 'row' }]} onPress={() => Alert.alert('Download', 'This would generate and download a PDF of the receipt.')}>
           <Text style={[styles.outlineButtonText, { marginRight: 10 }]}>Download Receipt</Text>
           <Ionicons name="download-outline" size={16} color={cyan} />
         </TouchableOpacity>
@@ -6072,7 +6334,7 @@ export function MedicalRecordsSharingScreen({ navigation }) {
           <Text style={[styles.bodyText, { color: '#1E40AF', marginTop: 4 }]}>All medical records are encrypted and shared securely. You have full control over who can access your data and for how long.</Text>
         </View>
       </Card>
-
+    
       <Text style={styles.sectionHeader}>Try Record Sharing Flow</Text>
       <Text style={[styles.bodyText, { marginBottom: 12, paddingHorizontal: 4 }]}>Click on any scenario below to experience the consent flow</Text>
       {doctors.map((item, index) => (
@@ -6120,7 +6382,12 @@ export function MedicalRecordsSharingScreen({ navigation }) {
               <Text style={styles.bodyText}><Text style={{fontWeight: '700', color: ink}}>Shared on:</Text> {lastShareActivity.date}</Text>
             </View>
             <View style={{ flexDirection: 'row', gap: 8 }}>
-              <TouchableOpacity style={[styles.outlineButton, { flex: 1, flexDirection: 'row', backgroundColor: '#FFFFFF', borderColor: '#CBD5E1' }]}>
+              <TouchableOpacity
+                style={[styles.outlineButton, { flex: 1, flexDirection: 'row', backgroundColor: '#FFFFFF', borderColor: '#CBD5E1' }]}
+                onPress={() =>
+                  Alert.alert('Shared Records', `You have shared ${lastShareActivity.count} record types with ${lastShareActivity.doctor}. Access is for: ${lastShareActivity.access}.`)
+                }
+              >
                 <Ionicons name="eye-outline" size={16} color={ink} style={{ marginRight: 6 }} />
                 <Text style={[styles.outlineButtonText, { color: ink }]}>View Shared Records</Text>
               </TouchableOpacity>
@@ -6571,19 +6838,40 @@ const styles = StyleSheet.create({
   chatMineText: { color: '#FFFFFF' },
   chatOtherText: { color: ink },
   chatTime: { fontSize: 11, marginTop: 4, alignSelf: 'flex-end' },
+  attachmentButton: {
+    padding: 8,
+    marginLeft: 4,
+    marginRight: 4,
+    marginBottom: 4,
+  },
   chatMineTime: { color: 'rgba(255,255,255,0.7)' },
   chatOtherTime: { color: '#94A3B8' },
   messageComposer: {
     flexDirection: 'row',
     alignItems: 'flex-end',
     paddingHorizontal: 10,
-    paddingVertical: 12,
+    paddingTop: 12,
+    paddingBottom: 12,
     borderTopWidth: 1,
     borderTopColor: '#E2E8F0',
     backgroundColor: '#FFFFFF',
   },
-  messageInput: { 
-    flex: 1, 
+  attachmentPreview: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    backgroundColor: '#F1F5F9',
+    borderTopWidth: 1,
+    borderTopColor: '#E2E8F0',
+  },
+  attachmentPreviewText: {
+    color: ink,
+    fontSize: 13,
+    flex: 1,
+  },
+  messageInput: {
+    flex: 1,
     minHeight: 40, 
     maxHeight: 100,
     borderRadius: 20, 
@@ -6593,7 +6881,7 @@ const styles = StyleSheet.create({
     paddingBottom: Platform.OS === 'ios' ? 12 : 10,
     color: ink,
     fontSize: 15,
-    marginHorizontal: 8
+    marginRight: 8,
   },
   sendButton: { width: 40, height: 40, borderRadius: 20, backgroundColor: cyan, alignItems: 'center', justifyContent: 'center', marginBottom: 2 },
 
@@ -6618,8 +6906,7 @@ const styles = StyleSheet.create({
   detailText: { color: ink, fontSize: 16, fontWeight: '700' },
   invoiceRow: { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 11, borderBottomWidth: 1, borderBottomColor: '#E2E8F0' },
   invoiceAmount: { color: ink, fontSize: 15, fontWeight: '800' },
-  invoiceTotal: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 14 },
-  totalAmount: { color: '#F59E0B', fontSize: 26, fontWeight: '900' },
+  totalAmount: { color: ink, fontSize: 26, fontWeight: '900' },
 
   // --- AUTH & FORMS ---
   authWrapper: { backgroundColor: bg, paddingHorizontal: 16 },
