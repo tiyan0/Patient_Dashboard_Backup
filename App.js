@@ -31,6 +31,7 @@ import {
   ConsultationIntakeScreen,
   RequestReferralScreen,
   RenewalRequestsScreen,
+  NotificationsScreen,
 } from './PatientFlowScreens';
 
 const Tab = createBottomTabNavigator();
@@ -111,6 +112,7 @@ function MainTabs() {
       <Tab.Screen name="PaymentSuccess" component={PaymentSuccessScreen} />
       <Tab.Screen name="EditProfile" component={EditProfileScreen} />
       <Tab.Screen name="RenewalRequests" component={RenewalRequestsScreen} />
+      <Tab.Screen name="Notifications" component={NotificationsScreen} />
     </Tab.Navigator>
   );
 }

@@ -15,7 +15,7 @@ import { API_URL, currentUser } from './config';
 
 export default function DashboardScreen({ navigation, route }) {
   const isMockUser = !currentUser || currentUser?.id === 'mock-user-123'; // Use mock data if no user is logged in, or if it's the mock user
-  const [notificationCount, setNotificationCount] = useState(isMockUser ? 3 : 0);
+  const [notificationCount, setNotificationCount] = useState(isMockUser ? 2 : 0);
 
   const [pendingReferrals, setPendingReferrals] = useState(isMockUser ? [
     {
@@ -92,10 +92,9 @@ export default function DashboardScreen({ navigation, route }) {
         <TouchableOpacity 
           style={styles.bellIcon}
           onPress={() => {
+            navigation.navigate('Notifications');
             if (isMockUser) {
               setNotificationCount(0);
-              // In a real app, this would likely navigate to a notifications screen
-              // and the notifications would be marked as read there.
             }
           }}
         >

@@ -155,7 +155,7 @@ function AppHeader({ navigation }) {
         <Ionicons name="notifications-outline" size={20} color="#0F172A" />
 
         <View style={styles.notificationBadge}>
-          <Text style={styles.badgeText}>3</Text>
+          <Text style={styles.badgeText}>2</Text>
         </View>
       </TouchableOpacity>
     </View>

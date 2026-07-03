@@ -22,7 +22,7 @@ import {
 import { Ionicons, MaterialCommunityIcons, Feather, FontAwesome5 } from '@expo/vector-icons';
 import Svg, { Circle, Rect } from 'react-native-svg';
 import * as ImagePicker from 'expo-image-picker';
-import DateTimePicker from '@react-native-community/datetimepicker';
+import DateTimePicker, { DateTimePickerAndroid } from '@react-native-community/datetimepicker';
 import * as DocumentPicker from 'expo-document-picker';
 
 import { API_URL, currentUser, setCurrentUser } from './config';
@@ -365,7 +365,6 @@ export function PrescriptionsScreen({ navigation }) {
   const [reminders, setReminders] = useState([]);
   const [selectedMed, setSelectedMed] = useState('');
   const [selectedTime, setSelectedTime] = useState('');
-  const [showMedDropdown, setShowMedDropdown] = useState(false);
   const [showTimePicker, setShowTimePicker] = useState(false);
   const [pickerTime, setPickerTime] = useState(new Date());
   const [showRenewalModal, setShowRenewalModal] = useState(false);
@@ -449,22 +448,51 @@ export function PrescriptionsScreen({ navigation }) {
   const activeMeds = prescriptions.filter(med => med.status !== 'Past');
   const pastMeds = prescriptions.filter(med => med.status === 'Past');
 
+  const formatReminderTime = (date) => date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+  const closeReminderModal = () => {
+    setShowTimePicker(false);
+    setShowReminderModal(false);
+    setSelectedMed('');
+    setSelectedTime('');
+  };
+
+  const openTimePicker = () => {
+    if (Platform.OS === 'android') {
+      DateTimePickerAndroid.open({
+        value: pickerTime,
+        mode: 'time',
+        is24Hour: false,
+        display: 'default',
+        onChange: handleTimeChange,
+      });
+      return;
+    }
+
+    setShowTimePicker((visible) => !visible);
+  };
+
   const handleTimeChange = (event, selectedDate) => {
-    if (Platform.OS === 'android') setShowTimePicker(false);
+    if (Platform.OS === 'android') {
+      if (event.type === 'set' && selectedDate) {
+        const newTime = selectedDate || pickerTime;
+        setPickerTime(newTime);
+        setSelectedTime(formatReminderTime(newTime));
+      }
+      return;
+    }
+
+    // For iOS, we just update the picker's internal time state.
+    // The 'Done' button will handle the final selection.
     if (selectedDate) {
       setPickerTime(selectedDate);
-      const formattedTime = selectedDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-      setSelectedTime(formattedTime);
     }
   };
 
   const saveReminder = () => {
     if (selectedMed && selectedTime) {
       setReminders([...reminders, { id: Date.now().toString(), medication: selectedMed, time: selectedTime }]);
-      setShowReminderModal(false);
-      setSelectedMed('');
-      setSelectedTime('');
-      setShowMedDropdown(false);
+      closeReminderModal();
     }
   };
 
@@ -515,22 +543,30 @@ export function PrescriptionsScreen({ navigation }) {
             </View>
           </View>
 
-          <View style={[styles.rowBetween, { marginTop: 4, marginBottom: 0, alignItems: 'center' }]}>
+          <View style={{ marginTop: 4, marginBottom: 0 }}>
             <View style={{ flexDirection: 'row', alignItems: 'center' }}>
               <Ionicons name="time-outline" size={16} color={muted} />
               <Text style={[styles.bodyText, { fontSize: 12, marginLeft: 6 }]}>Next refill {med.nextRefill}</Text>
             </View>
-            <TouchableOpacity 
-              style={[styles.outlineButton, { flex: 0, paddingHorizontal: 16, backgroundColor: med.color === '#EF4444' ? '#EF4444' : cyan, borderColor: med.color === '#EF4444' ? '#EF4444' : cyan }]}
-              onPress={() => {
-                setRenewalMed({ name: med.name, prescriber: med.prescriber });
-                setShowRenewalModal(true);
-              }}
-            >
-              <Text style={[styles.outlineButtonText, { color: '#FFFFFF' }]}>
-                {med.daysRemaining === 0 ? 'Request Renewal' : 'Refill Now'}
-              </Text>
-            </TouchableOpacity>
+            <View style={{ flexDirection: 'row', gap: 8, marginTop: 12 }}>
+              <TouchableOpacity
+                style={[styles.outlineButton, { flex: 1, paddingHorizontal: 10, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', backgroundColor: cyan, borderColor: cyan }]}
+                onPress={() => {
+                  setRenewalMed({ name: med.name, prescriber: med.prescriber });
+                  setShowRenewalModal(true);
+                }}
+              >
+                <Ionicons name="refresh-outline" size={16} color="#FFFFFF" style={{ marginRight: 6 }} />
+                <Text style={[styles.outlineButtonText, { color: '#FFFFFF' }]}>Refill</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.outlineButton, { flex: 1, paddingHorizontal: 10, flexDirection: 'row', alignItems: 'center', justifyContent: 'center' }]}
+                onPress={() => { setSelectedMed(med.name); setShowReminderModal(true); }}
+              >
+                <Ionicons name="alarm-outline" size={16} color={cyan} style={{ marginRight: 6 }} />
+                <Text style={styles.outlineButtonText}>Set Reminder</Text>
+              </TouchableOpacity>
+            </View>
           </View>
         </Card>
       ))}
@@ -569,70 +605,47 @@ export function PrescriptionsScreen({ navigation }) {
       {/* Medication Reminders Box */}
       <Text style={[styles.sectionHeader, { marginTop: 12, marginBottom: 12 }]}>Reminders</Text>
       
-      {reminders.map((rem) => (
-        <Card key={rem.id} style={{ marginBottom: 12, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-          <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}>
-            <View style={[styles.recordIcon, { backgroundColor: teal + '15', marginRight: 12 }]}>
-              <Ionicons name="alarm-outline" size={20} color={teal} />
-            </View>
-            <View style={{ flex: 1 }}>
-              <Text style={styles.cardTitle}>{rem.medication}</Text>
-              <Text style={styles.bodyText}>Scheduled for {rem.time}</Text>
-            </View>
-          </View>
-          <TouchableOpacity onPress={() => removeReminder(rem.id)} style={{ padding: 8 }}>
-            <Ionicons name="trash-outline" size={20} color="#EF4444" />
-          </TouchableOpacity>
+      {reminders.length === 0 ? (
+        <Card style={{ alignItems: 'center', paddingVertical: 24, marginBottom: 24 }}>
+          <Ionicons name="notifications-off-outline" size={28} color="#CBD5E1" style={{ marginBottom: 12 }} />
+          <Text style={styles.cardTitle}>No Reminders Set</Text>
+          <Text style={[styles.bodyText, { textAlign: 'center', marginTop: 4 }]}>
+            You can set a reminder from any of your active medications above.
+          </Text>
         </Card>
-      ))}
-
-      <Card style={{ marginTop: reminders.length === 0 ? 0 : 12, marginBottom: 24 }}>
-        <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 16 }}>
-          <View style={[styles.recordIcon, { backgroundColor: cyan + '15', marginRight: 12 }]}>
-            <Ionicons name="notifications-outline" size={24} color={cyan} />
-          </View>
-          <View style={{ flex: 1 }}>
-            <Text style={styles.cardTitle}>Configure Reminders</Text>
-            <Text style={styles.bodyText}>Set up automated reminders to never miss a dose</Text>
-          </View>
-        </View>
-        <PrimaryButton label="Configure Reminders" icon="add" onPress={() => setShowReminderModal(true)} />
-      </Card>
+      ) : (
+        reminders.map((rem) => (
+          <Card key={rem.id} style={{ marginBottom: 12, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}>
+              <View style={[styles.recordIcon, { backgroundColor: teal + '15', marginRight: 12 }]}>
+                <Ionicons name="alarm-outline" size={20} color={teal} />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.cardTitle}>{rem.medication}</Text>
+                <Text style={styles.bodyText}>Scheduled for {rem.time}</Text>
+              </View>
+            </View>
+            <TouchableOpacity onPress={() => removeReminder(rem.id)} style={{ padding: 8 }}>
+              <Ionicons name="trash-outline" size={20} color="#EF4444" />
+            </TouchableOpacity>
+          </Card>
+        ))
+      )}
       </Screen>
 
       {/* Reminder Configuration Modal */}
-      <Modal visible={showReminderModal} transparent={true} animationType="fade" onRequestClose={() => setShowReminderModal(false)}>
+      <Modal visible={showReminderModal} transparent={true} animationType="fade" onRequestClose={closeReminderModal}>
         <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', alignItems: 'center', padding: 20 }}>
           <View style={{ backgroundColor: '#FFFFFF', borderRadius: 16, padding: 20, width: '100%', maxWidth: 340, shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.2, shadowRadius: 10, elevation: 5 }}>
-            <Text style={[styles.largeTitle, { fontSize: 20, marginBottom: 16 }]}>Add Reminder</Text>
-            
-            <Text style={styles.inputLabel}>Select Medication *</Text>
-            <TouchableOpacity 
-              style={[styles.textInput, { justifyContent: 'center', marginBottom: 12 }]} 
-              onPress={() => setShowMedDropdown(!showMedDropdown)}
-            >
-              <View style={{ flexDirection: 'row', alignItems: 'center', width: '100%' }}>
-                <Text style={{ flex: 1, color: selectedMed ? ink : '#94A3B8' }}>{selectedMed || 'Choose medication'}</Text>
-                <Ionicons name={showMedDropdown ? "chevron-up" : "chevron-down"} size={18} color={muted} />
-              </View>
-            </TouchableOpacity>
-
-            {showMedDropdown && (
-               <View style={{ backgroundColor: '#F8FAFC', borderRadius: 8, borderWidth: 1, borderColor: '#E2E8F0', padding: 8, marginBottom: 16 }}>
-                 <ScrollView nestedScrollEnabled style={{ maxHeight: 150 }}>
-                   {activeMeds.map(med => (
-                     <TouchableOpacity key={med.name} style={{ paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: '#F1F5F9' }} onPress={() => { setSelectedMed(med.name); setShowMedDropdown(false); }}>
-                       <Text style={{ color: ink, fontSize: 14 }}>{med.name}</Text>
-                     </TouchableOpacity>
-                   ))}
-                 </ScrollView>
-               </View>
-            )}
+            <Text style={[styles.largeTitle, { fontSize: 20, marginBottom: 8, textAlign: 'center' }]}>Add Reminder</Text>
+            <Text style={[styles.bodyText, { marginBottom: 20, textAlign: 'center' }]}>
+              Set a reminder for <Text style={{ fontWeight: '700', color: ink }}>{selectedMed}</Text>.
+            </Text>
 
             <Text style={styles.inputLabel}>Time *</Text>
             <TouchableOpacity 
-              style={[styles.textInput, { justifyContent: 'center', marginBottom: showTimePicker ? 8 : 24 }]} 
-              onPress={() => setShowTimePicker(true)}
+              style={[styles.textInput, { justifyContent: 'center', marginBottom: showTimePicker && Platform.OS === 'ios' ? 12 : 24 }]} 
+              onPress={openTimePicker}
             >
               <View style={{ flexDirection: 'row', alignItems: 'center', width: '100%' }}>
                 <Ionicons name="time-outline" size={18} color={muted} style={{ marginRight: 8 }} />
@@ -640,20 +653,36 @@ export function PrescriptionsScreen({ navigation }) {
               </View>
             </TouchableOpacity>
 
-            {showTimePicker && (
-              <View style={{ alignItems: 'flex-start', marginBottom: 24 }}>
+            {showTimePicker && Platform.OS === 'ios' && (
+              <View style={{ marginBottom: 24, backgroundColor: '#FFFFFF', borderRadius: 12, borderWidth: 1, borderColor: '#CBD5E1', overflow: 'hidden' }}>
+                <View style={{ paddingVertical: 10, alignItems: 'center', borderBottomWidth: 1, borderBottomColor: '#E2E8F0', backgroundColor: '#F8FAFC' }}>
+                  <Text style={{ color: muted, fontSize: 12, fontWeight: '700' }}>Selected Time</Text>
+                  <Text style={{ color: ink, fontSize: 22, fontWeight: '900', marginTop: 2 }}>{formatReminderTime(pickerTime)}</Text>
+                </View>
                 <DateTimePicker
                   value={pickerTime}
                   mode="time"
                   is24Hour={false}
-                  display="default"
+                  display="spinner"
                   onChange={handleTimeChange}
+                  textColor={ink}
+                  themeVariant="light"
+                  style={{ width: '100%', height: 180, backgroundColor: '#FFFFFF' }}
                 />
+                <TouchableOpacity
+                  style={{ height: 44, alignItems: 'center', justifyContent: 'center', borderTopWidth: 1, borderTopColor: '#E2E8F0', backgroundColor: '#FFFFFF' }}
+                  onPress={() => {
+                    setSelectedTime(formatReminderTime(pickerTime));
+                    setShowTimePicker(false);
+                  }}
+                >
+                  <Text style={{ color: cyan, fontSize: 15, fontWeight: '800' }}>Done</Text>
+                </TouchableOpacity>
               </View>
             )}
 
             <View style={{ flexDirection: 'row', gap: 12 }}>
-              <TouchableOpacity style={[styles.outlineButton, { flex: 1 }]} onPress={() => { setShowReminderModal(false); setShowMedDropdown(false); setSelectedMed(''); setSelectedTime(''); }}>
+              <TouchableOpacity style={[styles.outlineButton, { flex: 1 }]} onPress={closeReminderModal}>
                 <Text style={styles.outlineButtonText}>Cancel</Text>
               </TouchableOpacity>
               <TouchableOpacity 
@@ -6284,12 +6313,15 @@ export function MedicalRecordsSharingScreen({ navigation }) {
   const [accessDuration, setAccessDuration] = useState('one-time');
   const [showDenyWarning, setShowDenyWarning] = useState(false);
   const [lastShareActivity, setLastShareActivity] = useState(null);
+  const isMockUser = !currentUser || currentUser?.id === 'mock-user-123';
 
-  const doctors = [
+  const mockSharingRequests = [
     { doc: 'Dr. Maria Santos', spec: 'Cardiologist', reason: 'Heart Condition follow-up' },
     { doc: 'Dr. James Chen', spec: 'Orthopedic Surgeon', reason: 'Knee Pain assessment' },
     { doc: 'Dr. Sofia Reyes', spec: 'Dermatologist', reason: 'Skin condition review' },
   ];
+
+  const sharingRequests = isMockUser ? mockSharingRequests : [];
 
   const features = [
     { icon: 'shield-checkmark-outline', title: 'Granular Control', sub: 'Choose exactly which records to share', color: '#10B981' },
@@ -6335,37 +6367,46 @@ export function MedicalRecordsSharingScreen({ navigation }) {
         </View>
       </Card>
     
-      <Text style={styles.sectionHeader}>Try Record Sharing Flow</Text>
-      <Text style={[styles.bodyText, { marginBottom: 12, paddingHorizontal: 4 }]}>Click on any scenario below to experience the consent flow</Text>
-      {doctors.map((item, index) => (
-        <Card key={index}>
-          <View style={{ marginBottom: 16, flexDirection: 'row', alignItems: 'center' }}>
-            <View style={{ width: 48, height: 48, borderRadius: 24, backgroundColor: cyan + '15', alignItems: 'center', justifyContent: 'center', marginRight: 12 }}>
-              <Ionicons name="person" size={24} color={cyan} />
-            </View>
-            <View style={{ flex: 1 }}>
-              <Text style={styles.cardTitle}>{item.doc}</Text>
-              <Text style={[styles.bodyText, { fontWeight: '700', color: ink }]}>{item.spec}</Text>
-              <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 4 }}>
-                <Ionicons name="medical-outline" size={14} color={muted} style={{ marginRight: 6 }} />
-                <Text style={styles.metaText}>{item.reason}</Text>
+      <Text style={styles.sectionHeader}>Sharing Requests</Text>
+      {sharingRequests.length === 0 ? (
+        <Card style={{ alignItems: 'center', paddingVertical: 24, marginBottom: 24 }}>
+          <Ionicons name="people-outline" size={30} color="#CBD5E1" style={{ marginBottom: 12 }} />
+          <Text style={styles.cardTitle}>No Sharing Requests</Text>
+          <Text style={[styles.bodyText, { textAlign: 'center', marginTop: 4 }]}>
+            Doctors who request access to your records will appear here.
+          </Text>
+        </Card>
+      ) : (
+        sharingRequests.map((item, index) => (
+          <Card key={index}>
+            <View style={{ marginBottom: 16, flexDirection: 'row', alignItems: 'center' }}>
+              <View style={{ width: 48, height: 48, borderRadius: 24, backgroundColor: cyan + '15', alignItems: 'center', justifyContent: 'center', marginRight: 12 }}>
+                <Ionicons name="person" size={24} color={cyan} />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.cardTitle}>{item.doc}</Text>
+                <Text style={[styles.bodyText, { fontWeight: '700', color: ink }]}>{item.spec}</Text>
+                <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 4 }}>
+                  <Ionicons name="medical-outline" size={14} color={muted} style={{ marginRight: 6 }} />
+                  <Text style={styles.metaText}>{item.reason}</Text>
+                </View>
               </View>
             </View>
-          </View>
-          <PrimaryButton 
-            label="Start Sharing Flow" 
-            icon="arrow-forward" 
-            color={cyan} 
-            onPress={() => {
-              setCurrentDoctor(item);
-              setSelectedRecords([]);
-              setAccessDuration('one-time');
-              setShowDenyWarning(false);
-              setSharingModalVisible(true);
-            }}
-          />
-        </Card>
-      ))}
+            <PrimaryButton
+              label="Start Sharing Flow"
+              icon="arrow-forward"
+              color={cyan}
+              onPress={() => {
+                setCurrentDoctor(item);
+                setSelectedRecords([]);
+                setAccessDuration('one-time');
+                setShowDenyWarning(false);
+                setSharingModalVisible(true);
+              }}
+            />
+          </Card>
+        ))
+      )}
 
       {lastShareActivity && (
         <>
@@ -6688,6 +6729,100 @@ export function RenewalRequestsScreen({ navigation }) {
             {!!req.notes && <Text style={[styles.bodyText, { marginTop: 8 }]}><Text style={{ fontWeight: '700', color: ink }}>Notes:</Text> {req.notes}</Text>}
             {req.createdAt && <Text style={[styles.bodyText, { marginTop: 12, fontSize: 11 }]}><Text style={{ fontWeight: '700', color: ink }}>Requested on:</Text> {new Date(req.createdAt).toLocaleDateString()}</Text>}
           </Card>
+        ))
+      )}
+    </Screen>
+  );
+}
+
+export function NotificationsScreen({ navigation }) {
+  const isMockUser = !currentUser || currentUser?.id === 'mock-user-123';
+
+  const mockNotifications = [
+    {
+      id: '1',
+      icon: 'calendar-outline',
+      color: '#089FB4',
+      title: 'Appointment Confirmed',
+      message: 'Your video consultation with Dr. Sarah Johnson is confirmed for March 31, 2026 at 2:30 PM.',
+      time: '2 hours ago',
+      read: false,
+    },
+    {
+      id: '2',
+      icon: 'chatbubble-ellipses-outline',
+      color: '#10B981',
+      title: 'New Message',
+      message: 'You have a new message from Nurse Emily regarding your recent inquiry.',
+      time: 'Yesterday',
+      read: false,
+    }
+  ];
+
+  const [notifications, setNotifications] = useState(isMockUser ? mockNotifications : []);
+  
+  const handleClearNotifications = () => {
+    setNotifications([]);
+  };
+
+  const handleNotificationPress = (notification) => {
+    // Mark as read
+    setNotifications(
+      notifications.map((n) =>
+        n.id === notification.id ? { ...n, read: true } : n
+      )
+    );
+
+    // Navigate to relevant screen based on notification
+    if (notification.title.includes('Appointment')) {
+      navigation.navigate('Appointments');
+    } else if (notification.title.includes('Message')) {
+      navigation.navigate('Messages');
+    } else if (notification.title.includes('Prescription')) {
+      navigation.navigate('Prescriptions');
+    } else if (notification.title.includes('Referral')) {
+      navigation.navigate('MedicalRecords', { initialCategory: 'Referrals' });
+    } else if (notification.title.includes('Payment')) {
+      navigation.navigate('Invoice');
+    }
+  };
+
+  return (
+    <Screen title="Notifications" subtitle="Your recent account activity" icon="notifications-outline" navigation={navigation}>
+      {notifications.length > 0 && (
+        <View style={{ alignItems: 'flex-end', paddingHorizontal: 4, marginBottom: 4 }}>
+          <TouchableOpacity onPress={handleClearNotifications} activeOpacity={0.7}>
+            <Text style={{ color: cyan, fontSize: 13, fontWeight: '700' }}>
+              Clear Notifications
+            </Text>
+          </TouchableOpacity>
+        </View>
+      )}
+      {notifications.length === 0 ? (
+        <Card style={{ alignItems: 'center', paddingVertical: 32 }}>
+          <Ionicons name="notifications-off-outline" size={32} color="#CBD5E1" style={{ marginBottom: 12 }} />
+          <Text style={styles.cardTitle}>No new notifications</Text>
+          <Text style={[styles.bodyText, { textAlign: 'center', marginTop: 4 }]}>You're all caught up! We'll let you know when there's new activity.</Text>
+        </Card>
+      ) : (
+        notifications.map((item) => (
+          <TouchableOpacity key={item.id} onPress={() => handleNotificationPress(item)} activeOpacity={0.7}>
+            <Card style={!item.read && styles.unreadCard}>
+              <View style={{ flexDirection: 'row', alignItems: 'flex-start' }}>
+                <View style={[styles.notificationIcon, { backgroundColor: item.color + '15' }]}>
+                  <Ionicons name={item.icon} size={22} color={item.color} />
+                </View>
+                <View style={{ flex: 1, marginLeft: 12 }}>
+                  <View style={styles.rowBetween}>
+                    <Text style={styles.cardTitle}>{item.title}</Text>
+                    {!item.read && <View style={styles.unreadDot} />}
+                  </View>
+                  <Text style={[styles.bodyText, { marginTop: 4, marginBottom: 8 }]}>{item.message}</Text>
+                  <Text style={styles.notificationTime}>{item.time}</Text>
+                </View>
+              </View>
+            </Card>
+          </TouchableOpacity>
         ))
       )}
     </Screen>
